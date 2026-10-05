@@ -1,0 +1,111 @@
+{
+  "title": "Remittance Survey 2026",
+  "sources": [
+    {
+      "id": "bn",
+      "label": "Bangla form",
+      "dictionary": "REMITTANCE_SURVEY_2026_DICT",
+      "csdb": "remittance_survey_2026_dict.csdb"
+    },
+    {
+      "id": "en",
+      "label": "English form",
+      "dictionary": "REMITTANCE_SURVEY_ENGLISH_DICT",
+      "csdb": "remittance_survey_english_dict.csdb"
+    }
+  ],
+  "fetch": {
+    "mode": "sync",
+    "dropbox_sync_root": "/CSPro/DataSync",
+    "dropbox_csdb_folder": "/RemittanceSurveyData"
+  },
+  "labels_dictionary": "dict/REMITTANCE_SURVEY_ENGLISH_DICT.dcf",
+  "rates_note": "STARTING VALUES ONLY - replace with the rates you want to report (for example the Bangladesh Bank average for the fieldwork period).",
+  "rates_per_usd": {
+    "USD": 1,
+    "BDT": 123.0,
+    "GBP": 0.75,
+    "MYR": 4.2,
+    "AED": 3.6725,
+    "SAR": 3.75
+  },
+  "recodes": {
+    "D12_STATUS": {
+      "3": 98
+    },
+    "D9_STATUS": {
+      "3": 98
+    },
+    "E11_STATUS": {
+      "8": 3
+    }
+  },
+  "channel_amount_currency": "C3_CURRENCY",
+  "country_currency": {
+    "101": 2,
+    "102": 5,
+    "103": 4,
+    "104": 1,
+    "105": 3
+  },
+  "rate_check_tolerance": 0.3,
+  "targets": {
+    "101": null,
+    "102": null,
+    "103": null,
+    "104": null,
+    "105": null
+  },
+  "results_include_reopened": true,
+  "privacy": {
+    "show_staff_names": true,
+    "min_n_for_statistics": 5,
+    "list_flagged_case_ids": true,
+    "publish_open_text": [
+      "CITY",
+      "D5_NAME"
+    ]
+  },
+  "aliases": {
+    "CITY": {
+      "জেদ্দা": "Jeddah",
+      "রিয়াদ": "Riyadh",
+      "দুবাই": "Dubai",
+      "ডুবাই": "Dubai",
+      "ডুবই": "Dubai",
+      "দুবই": "Dubai",
+      "শারজাহ": "Sharjah",
+      "sharja": "Sharjah",
+      "ওয়ালসল": "Walsall",
+      "লন্ডন": "London",
+      "বার্মিংহাম": "Birmingham",
+      "সাটন কোল্ডফিল্ড": "Sutton Coldfield",
+      "কার্ডিফ": "Cardiff",
+      "স্মলহিথ": "Small Heath",
+      "কেটারিং": "Kettering",
+      "ওরস্টার": "Worcester",
+      "macca": "Makkah",
+      "sandiego": "San Diego"
+    },
+    "D5_NAME": {
+      "টেলিমানি": "Tele Money",
+      "tele money": "Tele Money",
+      "টেপটেপ সেন্ড": "Taptap Send",
+      "taptap": "Taptap Send",
+      "ফাউরি আলজাজিরা ব্যাংক": "Fawri (Bank AlJazira)",
+      "ফাউরি আলজাজিরা": "Fawri (Bank AlJazira)",
+      "আলরাজী তাউইল": "Al Rajhi Tahweel",
+      "আলরাজি তাহউইল": "Al Rajhi Tahweel",
+      "আলরাজী টাউউইল": "Al Rajhi Tahweel",
+      "আলরাজি": "Al Rajhi",
+      "আলরাজী ব্যাংক": "Al Rajhi Bank",
+      "শাহজালাল মানি ট্রান্সফার": "Shahjalal Money Transfer",
+      "আল গণি মানি ট্রান্সফার": "Al Gani Money Transfer",
+      "গণি মানি ট্রান্সফার": "Al Gani Money Transfer",
+      "এহেছান ব্রাদার্স": "Ehsan Brothers",
+      "রেমিটলি": "Remitly",
+      "সোনালী ব্যাংক": "Sonali Bank",
+      "শাপলা মানি ট্রান্সফার": "Shapla Money Transfer"
+    }
+  }
+}

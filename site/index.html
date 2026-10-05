@@ -1,0 +1,1004 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Remittance Survey Monitor</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/dist/echarts-gl.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@4.9.0/map/js/world.js"></script>
+<style>
+/* Banknote theme: deep emerald ground, engraved-gold accent, mint second series. One long page, filters pinned on top. */
+:root{
+  color-scheme:dark;
+  --bg:#06120E; --bg2:#0A1B15; --card:#0D221A; --card2:#123024; --line:#1F4234; --line2:#2C5A47;
+  --ink:#EEF6F0; --muted:#94B1A3; --faint:#62806F;
+  --gold:#E9B949; --gold2:#F7DC8B; --mint:#4FD6BE; --coral:#FF8A6B;
+  --ben:#E9B949; --non:#4FD6BE; --ok:#5BE39A; --warn:#F5C451; --bad:#FF8A7A; --accent:#E9B949;
+  --display:"Plus Jakarta Sans","Segoe UI",system-ui,sans-serif;
+  --sans:"Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+}
+[hidden]{display:none!important}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{background:
+  radial-gradient(900px 520px at 8% -6%,rgba(46,160,110,.22),transparent 62%),
+  radial-gradient(800px 520px at 100% 12%,rgba(233,185,73,.10),transparent 60%),
+  repeating-linear-gradient(115deg,rgba(255,255,255,.012) 0 2px,transparent 2px 9px),
+  var(--bg);
+  background-attachment:fixed;color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+/* ---------- sign in ---------- */
+#login{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:24px 16px;
+  background:radial-gradient(1100px 700px at 18% 8%,#0F3B2A 0%,transparent 60%),radial-gradient(900px 640px at 92% 92%,#3A2E0C 0%,transparent 58%),var(--bg)}
+#bg{position:absolute;inset:0;width:100%;height:100%;display:block}
+.login-card{position:relative;width:min(410px,100%);padding:30px 28px 26px;border-radius:20px;
+  background:rgba(9,26,20,.66);border:1px solid rgba(233,185,73,.28);
+  box-shadow:0 30px 80px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.05);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.brand{display:flex;align-items:center;gap:13px;margin-bottom:22px}
+.mark{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;flex:none;
+  background:conic-gradient(from 200deg,#F7DC8B,#B8862A,#F7DC8B,#E9B949,#8C6418,#F7DC8B);box-shadow:0 0 0 3px rgba(233,185,73,.16)}
+.mark span{width:36px;height:36px;border-radius:50%;background:#0A1B15;display:grid;place-items:center;font:700 1.05rem var(--display);color:var(--gold2)}
+.brand h1{margin:0;font:700 1.2rem var(--display);letter-spacing:-.01em}
+.brand p{margin:1px 0 0;color:var(--muted);font-size:.82rem}
+.field{display:grid;gap:6px;margin-bottom:14px}
+.field label,.sel label,.sel .lab{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.inp{position:relative}
+.inp input{width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--line);background:rgba(4,12,9,.7);color:var(--ink)}
+.inp input:focus{border-color:var(--gold);outline:none;box-shadow:0 0 0 3px rgba(233,185,73,.2)}
+.eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:0;color:var(--muted);cursor:pointer;padding:6px 8px;font-size:.8rem}
+.go{width:100%;margin-top:6px;padding:12px;border:0;border-radius:10px;cursor:pointer;font-weight:700;color:#1C1503;background:linear-gradient(90deg,#F7DC8B,#E9B949 55%,#C9962F)}
+.go:hover{filter:brightness(1.07)}
+.go:disabled{opacity:.6;cursor:wait}
+.msg{min-height:1.4em;margin:10px 0 0;font-size:.86rem;color:var(--bad)}
+.shake{animation:shake .35s}
+@keyframes shake{20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+
+/* ---------- page ---------- */
+#app{padding-inline:16px;padding-block:20px 56px}
+.wrap{max-width:1260px;margin:0 auto;display:grid;gap:16px}
+header{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;justify-content:space-between}
+header .eyebrow{font:700 .72rem var(--sans);letter-spacing:.16em;text-transform:uppercase;color:var(--gold)}
+header h1{margin:2px 0 0;font:800 clamp(1.4rem,3.1vw,2rem) var(--display);letter-spacing:-.02em;text-wrap:balance}
+header .sub{margin:2px 0 0;color:var(--muted);font-size:.9rem}
+.tools{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.stamp{font-family:var(--mono);font-size:.76rem;color:var(--muted);text-align:right;line-height:1.4}
+.stamp b{color:var(--ink);font-weight:500}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--bg2)}
+.seg button{background:transparent;border:0;color:var(--muted);padding:7px 13px;cursor:pointer;font-size:.85rem;font-weight:700}
+.seg button[aria-pressed="true"]{background:linear-gradient(180deg,#F2CC6B,#D9A63A);color:#1C1503}
+.out{background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:10px;padding:7px 12px;cursor:pointer;font-size:.85rem}
+.out:hover{color:var(--ink);border-color:var(--line2)}
+.save{border:0;border-radius:10px;padding:8px 16px;cursor:pointer;font-weight:700;font-size:.85rem;color:#1C1503;background:linear-gradient(180deg,#F2CC6B,#D9A63A)}
+.save:hover{filter:brightness(1.07)}
+
+.filterbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:flex-end;padding:12px 14px;border-radius:16px;
+  background:rgba(8,24,18,.95);border:1px solid var(--line);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 10px 30px rgba(0,0,0,.28)}
+.sel{display:grid;gap:5px;min-width:0}
+.chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;max-width:100%;padding:1px}
+.chips::-webkit-scrollbar{display:none}
+.chip{display:inline-flex;align-items:center;gap:8px;white-space:nowrap;padding:6px 12px 6px 7px;border-radius:999px;border:1px solid var(--line);background:var(--bg2);color:var(--muted);cursor:pointer;font-weight:600;font-size:.86rem}
+.chip:hover{color:var(--ink);border-color:var(--line2)}
+.chip[aria-pressed="true"]{color:#1C1503;background:linear-gradient(180deg,#F2CC6B,#D9A63A);border-color:#F2CC6B}
+.chip.all{padding-left:13px}
+.flag{display:inline-block;width:24px;height:16px;border-radius:3px;flex:none;box-shadow:0 0 0 1px rgba(255,255,255,.28)}
+.f-my{background:linear-gradient(#010066,#010066) top left/50% 57% no-repeat,repeating-linear-gradient(#CC0001 0 14.28%,#fff 14.28% 28.57%)}
+.f-sa{background:linear-gradient(#fff,#fff) center 62%/52% 9% no-repeat,#006C35}
+.f-ae{background:linear-gradient(#EF3340,#EF3340) left/27% 100% no-repeat,linear-gradient(#00843D 33.3%,#fff 33.3% 66.6%,#111 66.6%)}
+.f-gb{background:linear-gradient(#C8102E,#C8102E) center/100% 20% no-repeat,linear-gradient(#C8102E,#C8102E) center/12% 100% no-repeat,linear-gradient(#fff,#fff) center/100% 38% no-repeat,linear-gradient(#fff,#fff) center/24% 100% no-repeat,#012169}
+.f-us{background:linear-gradient(#3C3B6E,#3C3B6E) top left/42% 54% no-repeat,repeating-linear-gradient(#B22234 0 7.7%,#fff 7.7% 15.4%)}
+.f-bd{background:radial-gradient(circle at 45% 50%,#F42A41 0 33%,#006A4E 35%)}
+.keys{display:flex;gap:14px;font-size:.8rem;color:var(--muted);margin-left:auto;align-self:center;flex-wrap:wrap}
+.keys i,.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.kpi{background:linear-gradient(180deg,var(--card),#0B1E17);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.kpi .lab,.st .lab{font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700}
+.kpi .val{font:500 1.9rem var(--mono);font-variant-numeric:tabular-nums;line-height:1.25}
+.kpi.main{background:radial-gradient(120% 140% at 0% 0%,#1E6B4B 0%,#0F3A2A 55%,#0B2A1F 100%);border-color:#2F7E5D;position:relative;overflow:hidden}
+.kpi.main::after{content:"";position:absolute;right:-26px;top:-26px;width:96px;height:96px;border-radius:50%;border:1px solid rgba(247,220,139,.35);box-shadow:0 0 0 10px rgba(247,220,139,.06),0 0 0 22px rgba(247,220,139,.04)}
+.kpi.main .val{color:var(--gold2)}
+.kpi .split{display:flex;flex-wrap:wrap;gap:0 6px;align-items:baseline;font:500 1.35rem var(--mono);line-height:1.5}
+.kpi .split small{font:600 .72rem var(--sans);color:var(--muted)}
+
+.card{background:linear-gradient(180deg,var(--card),#0B1E17);border:1px solid var(--line);border-radius:16px;padding:16px 18px;min-width:0}
+.card h2{margin:0 0 8px;font:700 1.02rem var(--display);letter-spacing:-.005em}
+.card h2 small{font:600 .7rem var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--gold);display:block;margin-bottom:2px}
+.card .hint{margin:2px 0 8px;color:var(--muted);font-size:.84rem;max-width:80ch}
+.chart{width:100%;height:320px}
+.maprow{display:grid;grid-template-columns:minmax(0,1fr) 270px;gap:16px;align-items:start}
+#c-map{height:480px}
+.rank{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.rank li{display:grid;grid-template-columns:24px 1fr auto;gap:10px;align-items:center;padding:9px 10px;border-radius:10px;background:var(--bg2);border:1px solid transparent;cursor:pointer}
+.rank li:hover{border-color:var(--line2)}
+.rank li.on{border-color:var(--gold)}
+.rank .nm{font-weight:600}
+.rank .ct{font:500 .95rem var(--mono);font-variant-numeric:tabular-nums}
+.rank .sp{grid-column:2 / 4;font-size:.76rem;color:var(--muted);margin-top:-4px}
+.rank li.zero{opacity:.5}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,480px),1fr));gap:16px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;margin:6px 0 4px;font-size:.8rem;color:var(--muted)}
+
+.tbl{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.9rem}
+th{text-align:left;font-weight:700;color:var(--muted);font-size:.7rem;text-transform:uppercase;letter-spacing:.07em;border-bottom:1px solid var(--line);padding:6px 8px 6px 0;white-space:nowrap}
+td{border-bottom:1px solid rgba(31,66,52,.7);padding:7px 8px 7px 0;vertical-align:middle}
+td.num,th.num{text-align:right}
+td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.pill{display:inline-block;font-size:.74rem;font-weight:700;padding:1px 9px;border-radius:10px;white-space:nowrap}
+.pill.ok{background:rgba(91,227,154,.13);color:var(--ok)}
+.pill.warn{background:rgba(245,196,81,.14);color:var(--warn)}
+.pill.bad{background:rgba(255,138,122,.13);color:var(--bad)}
+.empty{color:var(--muted);font-size:.9rem;padding:8px 0}
+.err{background:rgba(255,138,122,.12);color:var(--bad);padding:10px 14px;border-radius:10px}
+
+.stat-head{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:flex-end;justify-content:space-between}
+.pickers{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:flex-end}
+.sel select,.dates input,.rate input{background:var(--bg2);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px 10px;max-width:100%}
+.sel select{min-width:min(280px,100%)}
+.dates{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.dates span{color:var(--faint)}
+.dates button{background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:10px;padding:8px 10px;cursor:pointer;font-size:.82rem;font-weight:600}
+.dates button:hover{color:var(--ink);border-color:var(--line2)}
+.stiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:10px;margin-top:12px}
+.st{background:var(--bg2);border:1px solid rgba(31,66,52,.6);border-radius:12px;padding:10px 12px}
+.st .val{font:500 1.22rem var(--mono);font-variant-numeric:tabular-nums;line-height:1.3;word-break:break-word}
+.st .note{font-size:.74rem;color:var(--faint)}
+.inner{margin-top:12px}
+.sub2{margin:0 0 4px;font:700 .9rem var(--display)}
+.outl{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.outl span{font:500 .78rem var(--mono);padding:2px 8px;border-radius:6px;background:rgba(255,138,122,.12);color:var(--bad)}
+.outl span.x{background:rgba(255,138,122,.3);color:#FFD9D2}
+.trend-head{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between;margin-bottom:6px}
+.trend-head h2{margin:0}
+.qtext{margin:12px 0 0;font:600 1rem var(--sans);color:var(--ink);max-width:90ch;text-wrap:balance}
+.rates{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:10px;margin-top:10px}
+.rate{background:var(--bg2);border:1px solid rgba(31,66,52,.6);border-radius:12px;padding:10px 12px;display:grid;gap:6px}
+.rate .top{display:flex;align-items:center;gap:8px;font-weight:700}
+.rate .top small{font-weight:500;color:var(--muted)}
+.rate .eq{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:.9rem}
+.rate input{width:120px;font-family:var(--mono);text-align:right;padding:6px 8px}
+.rate .also{font:400 .76rem var(--mono);color:var(--faint)}
+.ratebar{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center}
+footer{color:var(--faint);font-size:.8rem}
+@media (max-width:820px){.maprow{grid-template-columns:1fr}#c-map{height:360px}.keys{margin-left:0}}
+@media (prefers-reduced-motion:reduce){.shake{animation:none}}
+</style>
+</head>
+<body>
+<div id="login">
+  <canvas id="bg" aria-hidden="true"></canvas>
+  <form class="login-card" id="loginForm" autocomplete="on">
+    <div class="brand">
+      <div class="mark"><span>৳</span></div>
+      <div><h1>Remittance Survey Monitor</h1></div>
+    </div>
+    <div class="field"><label for="user">Username</label><div class="inp"><input id="user" name="username" autocomplete="username" required></div></div>
+    <div class="field"><label for="pass">Password</label><div class="inp"><input id="pass" name="password" type="password" autocomplete="current-password" required><button class="eye" type="button" id="eye" aria-label="Show password">Show</button></div></div>
+    <button class="go" id="go" type="submit">Sign in</button>
+    <p class="msg" id="msg" role="alert"></p>
+  </form>
+</div>
+
+<div id="app" hidden>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Remittance Survey 2026</h1>
+    </div>
+    <div class="tools">
+      <div class="stamp">Checked <b id="checked">–</b><br>New data <b id="updated">–</b></div>
+      <div class="seg" role="group" aria-label="Chart style"><button type="button" id="b3d" aria-pressed="true">3D</button><button type="button" id="b2d" aria-pressed="false">2D</button></div>
+      <button class="out" id="logout" type="button">Sign out</button>
+    </div>
+  </header>
+
+  <div class="filterbar" aria-label="Filters">
+    <div class="sel"><span class="lab">Country</span><div class="chips" id="chips" role="group" aria-label="Country"></div></div>
+    <div class="sel"><span class="lab">Amounts in</span><div class="seg" role="group" aria-label="Currency"><button type="button" class="cur" data-c="USD" aria-pressed="true">USD</button><button type="button" class="cur" data-c="BDT" aria-pressed="false">BDT</button></div></div>
+    <div class="keys"><span><i style="background:var(--ben)"></i>Bangla questionnaire</span><span><i style="background:var(--non)"></i>English questionnaire</span></div>
+  </div>
+
+  <div id="error" class="err" hidden></div>
+
+  <section class="kpis" aria-label="Key numbers">
+    <div class="kpi main"><div class="lab">Interviews completed</div><div class="val" id="k-int">–</div></div>
+    <div class="kpi"><div class="lab">Today</div><div class="val" id="k-today">–</div></div>
+    <div class="kpi"><div class="lab">Last 7 days</div><div class="val" id="k-7">–</div></div>
+    <div class="kpi"><div class="lab">Questionnaire</div><div class="split"><span style="color:var(--ben)" id="k-bn">–</span><small>Bangla</small><span style="color:var(--non)" id="k-en">–</span><small>English</small></div></div>
+    <div class="kpi"><div class="lab">Refused</div><div class="val" id="k-ref">–</div></div>
+    <div class="kpi"><div class="lab">Partly saved</div><div class="val" id="k-part">–</div></div>
+    <div class="kpi"><div class="lab">Reopened</div><div class="val" id="k-reo">–</div></div>
+  </section>
+
+  <section class="card">
+    <h2 id="map-title">Interviews by destination country</h2>
+    <div class="maprow">
+      <div class="chart" id="c-map"></div>
+      <ul class="rank" id="rank"></ul>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="trend-head"><h2>Survey progress</h2>
+      <div class="seg" role="group" aria-label="Period"><button type="button" class="per" data-p="day" aria-pressed="true">Daily</button><button type="button" class="per" data-p="week" aria-pressed="false">Weekly</button><button type="button" class="per" data-p="month" aria-pressed="false">Monthly</button></div>
+    </div>
+    <div class="legend"><span><i style="background:#EEF6F0"></i>Total</span><span><i style="background:var(--ben)"></i>Bangla</span><span><i style="background:var(--non)"></i>English</span></div>
+    <div class="chart" id="c-trend"></div>
+  </section>
+
+  <section class="card">
+    <h2>Interviews per day</h2>
+    <div class="chart" id="c-time"></div>
+  </section>
+
+  <div class="grid2">
+    <section class="card"><h2>Country by questionnaire</h2><div class="chart" id="c-div"></div></section>
+    <section class="card"><h2>By city</h2><div class="chart" id="c-dist"></div></section>
+  </div>
+
+  <section class="card">
+    <h2>Remittances at a glance</h2>
+    <div class="stiles" id="money"></div>
+  </section>
+
+  <section class="card" id="fx">
+    <h2>Currency rates</h2>
+    <div class="ratebar">
+      <div class="seg" role="group" aria-label="Show amounts in"><button type="button" class="cur" data-c="USD" aria-pressed="true">Show in USD</button><button type="button" class="cur" data-c="BDT" aria-pressed="false">Show in BDT</button></div>
+      <button class="save" id="fx-save" type="button">Save rates</button>
+      <button class="out" id="fx-reset" type="button">Reset</button>
+      <span class="pill warn" id="fx-dirty" hidden>Not saved yet</span>
+      <span class="pill ok" id="fx-saved" hidden>Saved</span>
+      <span class="pill warn" id="fx-note" hidden>Using your saved rates</span>
+    </div>
+    <div class="rates" id="rates"></div>
+  </section>
+
+  <section class="card">
+    <h2>Last transaction by country</h2>
+    <div class="chart" id="c-last" style="height:300px"></div>
+    <div class="tbl"><table id="t-last"><thead><tr><th>Country</th><th class="num">Answers</th><th class="num" id="th-last-a">Average sent</th><th class="num" id="th-last-m">Median sent</th><th class="num" id="th-last-r">Average received</th><th class="num">Average fee share</th></tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <div class="grid2">
+    <section class="card">
+      <h2>Average income by country</h2>
+      <div class="chart" id="c-inc-c" style="height:300px"></div>
+      <div class="tbl"><table id="t-inc-c"><thead><tr><th>Country</th><th class="num">Answers</th><th class="num">Average</th><th class="num">Median</th></tr></thead><tbody></tbody></table></div>
+    </section>
+    <section class="card">
+      <h2 id="h-inc-j">Average income by profession</h2>
+      <div class="chart" id="c-inc-j" style="height:300px"></div>
+      <div class="tbl"><table id="t-inc-j"><thead><tr><th>Profession</th><th class="num">Answers</th><th class="num">Average</th><th class="num">Median</th></tr></thead><tbody></tbody></table></div>
+    </section>
+  </div>
+
+  <section class="card">
+    <h2>Hundi by country</h2>
+    <div class="chart" id="c-hundi" style="height:300px"></div>
+    <div class="tbl"><table id="t-hundi"><thead><tr><th>Country</th><th class="num">Senders asked</th><th class="num">Used hundi</th><th class="num">Share</th><th class="num">Average sent by hundi</th><th class="num">Median</th><th class="num">Average times</th></tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <section class="card">
+    <h2>Channels used in the past 12 months</h2>
+    <div class="chart" id="c-chan" style="height:340px"></div>
+    <div class="tbl"><table id="t-chan"><thead><tr><th>Channel</th><th class="num">Used it</th><th class="num">Users</th><th class="num">Median times</th><th class="num" id="th-med">Median amount</th><th class="num">Share of money</th></tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <section class="card">
+    <h2>Trust in each channel</h2>
+    <div class="chart" id="c-trust" style="height:360px"></div>
+  </section>
+
+  <section class="card" id="stats">
+    <div class="stat-head">
+      <h2>Quantitative statistics</h2>
+      <div class="pickers">
+        <div class="sel"><label for="svar">Question</label><select id="svar"></select></div>
+        <div class="sel"><span class="lab">Interview dates</span><div class="dates"><input type="date" id="sd1" aria-label="From date"><span>to</span><input type="date" id="sd2" aria-label="To date"><button type="button" id="sdall">All dates</button></div></div>
+      </div>
+    </div>
+    <div class="stiles">
+      <div class="st"><div class="lab">Answers (n)</div><div class="val" id="s-n">–</div></div>
+      <div class="st"><div class="lab">Mean</div><div class="val" id="s-mean">–</div></div>
+      <div class="st"><div class="lab">Median</div><div class="val" id="s-med">–</div></div>
+      <div class="st"><div class="lab">Mode</div><div class="val" id="s-mode">–</div></div>
+      <div class="st"><div class="lab">Std. deviation</div><div class="val" id="s-sd">–</div></div>
+      <div class="st"><div class="lab">Range</div><div class="val" id="s-rng">–</div></div>
+      <div class="st"><div class="lab">Distribution</div><div class="val" id="s-pill" style="font-size:1rem;line-height:1.35">–</div></div>
+      <div class="st"><div class="lab">Outliers</div><div class="val" id="s-oc">–</div></div>
+    </div>
+    <div class="grid2 inner">
+      <div>
+        <h3 class="sub2">Distribution</h3>
+        <div class="chart" id="c-hist" style="height:280px"></div>
+      </div>
+      <div>
+        <h3 class="sub2">Box plot and outliers</h3>
+        <div class="chart" id="c-box" style="height:170px"></div>
+        <div class="outl" id="s-olist"></div>
+        <h3 class="sub2" style="margin-top:14px">By questionnaire</h3>
+        <div class="tbl"><table id="t-grp"><thead><tr><th>Questionnaire</th><th class="num">n</th><th class="num">Mean</th><th class="num">Median</th></tr></thead><tbody></tbody></table></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" id="answers">
+    <div class="stat-head">
+      <h2>Qualitative answers</h2>
+      <div class="pickers">
+        <div class="sel"><label for="qvar">Question</label><select id="qvar"></select></div>
+        <div class="sel"><span class="lab">Interview dates</span><div class="dates"><input type="date" id="qd1" aria-label="From date"><span>to</span><input type="date" id="qd2" aria-label="To date"><button type="button" id="qdall">All dates</button></div></div>
+      </div>
+    </div>
+    <h3 class="qtext" id="q-text"></h3>
+    <div class="stiles" style="grid-template-columns:repeat(auto-fit,minmax(150px,220px))">
+      <div class="st"><div class="lab">Answered (n)</div><div class="val" id="q-n">–</div></div>
+      <div class="st"><div class="lab">Most common</div><div class="val" id="q-top" style="font-size:1rem;line-height:1.35">–</div></div>
+      <div class="st"><div class="lab">Type</div><div class="val" id="q-type" style="font-size:1rem;line-height:1.35">–</div></div>
+    </div>
+    <div class="chart" id="c-ans"></div>
+  </section>
+
+  <div class="grid2">
+    <section class="card">
+      <h2>Enumerators</h2>
+      <div class="tbl"><table id="t-enum"><thead><tr><th>Enumerator</th><th class="num">Total</th><th class="num">Today</th><th class="num">Partly saved</th><th class="num">To check</th><th>Last interview</th></tr></thead><tbody></tbody></table></div>
+    </section>
+    <section class="card">
+      <h2>Where interviews took place</h2>
+      <div class="chart" id="c-area" style="height:280px"></div>
+      <h2 style="margin-top:14px">Supervisors</h2>
+      <div class="tbl"><table id="t-sup"><thead><tr><th>Supervisor</th><th class="num">Total</th><th class="num">Today</th><th>Last interview</th></tr></thead><tbody></tbody></table></div>
+    </section>
+  </div>
+
+  <div class="grid2">
+    <section class="card">
+      <h2>Exchange rates respondents reported</h2>
+      <div class="tbl"><table id="t-rate"><thead><tr><th>Currency</th><th class="num">Last transaction</th><th class="num">Hundi</th></tr></thead><tbody></tbody></table></div>
+    </section>
+    <section class="card">
+      <h2>Providers named</h2>
+      <div class="chart" id="c-prov" style="height:300px"></div>
+    </section>
+  </div>
+
+  <section class="card">
+    <h2>Data checks</h2>
+    <div class="tbl"><table id="t-iss"><thead><tr><th>Problem</th><th>ID code</th><th>Enumerator</th><th>Questionnaire</th><th>Date</th></tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <footer id="foot"></footer>
+</div>
+</div>
+
+<script>
+/* ================= sign in ================= */
+(function(){
+  var HASH='0631e6845390818eaf5682c796f03131a640c296ce5da541f22e73ee6e6a62d3';
+  var KEY='rs-auth';
+  var login=document.getElementById('login'), app=document.getElementById('app');
+  function hex(buf){return Array.prototype.map.call(new Uint8Array(buf),function(b){return ('0'+b.toString(16)).slice(-2);}).join('');}
+  function sha(s){return crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)).then(hex);}
+  function open(){ login.hidden=true; app.hidden=false; stopBg(); window.startDashboard(); }
+  var ok=false; try{ ok=sessionStorage.getItem(KEY)===HASH; }catch(e){}
+  document.getElementById('eye').addEventListener('click',function(){
+    var p=document.getElementById('pass'), show=p.type==='password'; p.type=show?'text':'password';
+    this.textContent=show?'Hide':'Show'; this.setAttribute('aria-label',show?'Hide password':'Show password');
+  });
+  document.getElementById('loginForm').addEventListener('submit',function(e){
+    e.preventDefault();
+    var u=document.getElementById('user').value.trim().toLowerCase(), p=document.getElementById('pass').value;
+    var btn=document.getElementById('go'), msg=document.getElementById('msg'), card=this;
+    btn.disabled=true; msg.textContent='';
+    sha(u+':'+p).then(function(h){
+      btn.disabled=false;
+      if(h===HASH){ try{sessionStorage.setItem(KEY,HASH);}catch(e){} open(); }
+      else{ msg.textContent='Username or password is wrong. Check and try again.'; card.classList.remove('shake'); void card.offsetWidth; card.classList.add('shake'); document.getElementById('pass').select(); }
+    }).catch(function(){ btn.disabled=false; msg.textContent='Sign-in needs a secure (https) page. Open the dashboard from its https address.'; });
+  });
+  document.getElementById('logout').addEventListener('click',function(){ try{sessionStorage.removeItem(KEY);}catch(e){} location.reload(); });
+
+  /* ---- floating currency signs ---- */
+  var cv=document.getElementById('bg'), cx=cv.getContext('2d'), items=[], glows=[], raf=0, W=0, H=0, dpr=1, mx=0, my=0, tmx=0, tmy=0, T=0;
+  var SIGNS=['$','৳','£','RM','﷼','د.إ','€','$','৳','£'];
+  var TINTS=['#F7DC8B','#E9B949','#4FD6BE','#EEF6F0','#9BE7C4','#F2B66B'];
+  var reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var SPEED=reduce?0.3:1;
+  function size(){ dpr=Math.min(window.devicePixelRatio||1,2); W=cv.clientWidth; H=cv.clientHeight; cv.width=W*dpr; cv.height=H*dpr; cx.setTransform(dpr,0,0,dpr,0,0); }
+  function rnd(a,b){return a+Math.random()*(b-a);}
+  function make(){
+    items=[]; var n=Math.round(Math.min(46,Math.max(18,W*H/30000)));
+    for(var i=0;i<n;i++){ var z=rnd(.3,1);
+      items.push({s:SIGNS[i%SIGNS.length],coin:i%4===0,x:rnd(0,W),y:rnd(0,H),r:rnd(14,46)*(.6+z*.7),a:rnd(-.5,.5),va:rnd(-.006,.006),
+        vx:rnd(-.25,.25),vy:rnd(-.75,-.2),z:z,c:TINTS[i%TINTS.length],o:.12+z*.34,ph:rnd(0,6.28),pf:rnd(.008,.02),sw:rnd(.2,.8)});
+    }
+    items.sort(function(a,b){return a.z-b.z;});
+    glows=[0,1,2].map(function(i){ return {c:['#1E7A55','#C9962F','#12806F'][i],r:Math.max(W,H)*rnd(.34,.5),ph:rnd(0,6),sp:rnd(.0015,.003),ax:rnd(.22,.36),ay:rnd(.18,.32),cx:[.22,.8,.5][i],cy:[.28,.72,.9][i]}; });
+  }
+  function draw(){
+    cx.clearRect(0,0,W,H);
+    cx.globalCompositeOperation='lighter';
+    glows.forEach(function(b){
+      var x=W*(b.cx+Math.sin(T*b.sp+b.ph)*b.ax), y=H*(b.cy+Math.cos(T*b.sp*1.3+b.ph)*b.ay);
+      var g=cx.createRadialGradient(x,y,0,x,y,b.r); g.addColorStop(0,b.c+'4D'); g.addColorStop(1,b.c+'00');
+      cx.fillStyle=g; cx.fillRect(0,0,W,H);
+    });
+    cx.globalCompositeOperation='source-over';
+    cx.textAlign='center'; cx.textBaseline='middle';
+    items.forEach(function(s){
+      var sway=Math.sin(T*s.pf+s.ph), r=s.r*(1+sway*.06);
+      cx.save(); cx.translate(s.x+sway*14*s.sw+mx*s.z*34, s.y+my*s.z*34); cx.rotate(s.a+sway*.12); cx.globalAlpha=s.o;
+      if(s.coin){
+        var squash=.55+.45*Math.abs(Math.cos(T*s.pf*1.6+s.ph));      /* the coin slowly turns */
+        cx.scale(squash,1);
+        var g=cx.createLinearGradient(-r,-r,r,r); g.addColorStop(0,'#F7DC8B'); g.addColorStop(.5,'#C9962F'); g.addColorStop(1,'#7A5A14');
+        cx.fillStyle=g; cx.beginPath(); cx.arc(0,0,r,0,6.2832); cx.fill();
+        cx.strokeStyle='rgba(255,240,190,.75)'; cx.lineWidth=Math.max(1,r*.07); cx.beginPath(); cx.arc(0,0,r*.8,0,6.2832); cx.stroke();
+        cx.fillStyle='#2A1E04'; cx.font='700 '+Math.round(r*(s.s.length>1?.62:.95))+'px "Plus Jakarta Sans","Segoe UI","Nirmala UI",system-ui,sans-serif';
+        cx.fillText(s.s,0,r*.05);
+      } else {
+        cx.shadowColor=s.c; cx.shadowBlur=14*s.z;
+        cx.fillStyle=s.c; cx.font='700 '+Math.round(r*(s.s.length>1?1.05:1.7))+'px "Plus Jakarta Sans","Segoe UI","Nirmala UI",system-ui,sans-serif';
+        cx.fillText(s.s,0,0);
+      }
+      cx.restore();
+    });
+  }
+  function step(){
+    T+=SPEED; mx+=(tmx-mx)*.05; my+=(tmy-my)*.05;
+    items.forEach(function(s){ s.x+=s.vx*s.z*SPEED; s.y+=s.vy*s.z*SPEED; s.a+=s.va*SPEED;
+      if(s.y<-s.r*2-40){s.y=H+s.r*2+40; s.x=rnd(0,W);} if(s.x<-s.r*2-40)s.x=W+s.r*2+20; if(s.x>W+s.r*2+40)s.x=-s.r*2-20; });
+    draw(); raf=requestAnimationFrame(step);
+  }
+  function stopBg(){ cancelAnimationFrame(raf); raf=0; }
+  window.addEventListener('mousemove',function(e){ if(!W)return; tmx=(e.clientX/W-.5); tmy=(e.clientY/H-.5); });
+  window.addEventListener('resize',function(){ if(login.hidden)return; size(); make(); });
+  document.addEventListener('visibilitychange',function(){ if(login.hidden)return; if(document.hidden) stopBg(); else if(!raf) step(); });
+
+  if(ok){ window.addEventListener('DOMContentLoaded',open); }
+  else { size(); make(); step(); document.getElementById('user').focus(); }
+})();
+
+/* ================= dashboard ================= */
+window.startDashboard=function(){
+  if(window.__started) return; window.__started=true;
+  var $=function(id){return document.getElementById(id);};
+  var BEN='#E9B949', NON='#4FD6BE', INK='#EEF6F0', MUTED='#94B1A3', LINE='#1F4234', SPLIT='#143024', ZERO='#12281F', EDGE='#2C5A47';
+  var F=['bn','en'], FN={bn:'Bangla',en:'English'}, FC={bn:BEN,en:NON};
+  var TRUST={'1':'#6B4A1E','2':'#A8742A','3':'#E0A93B','4':'#F8E08E','98':'#2A4A3D'};
+  function grad(x,y,x2,y2,stops){ return {type:'linear',x:x,y:y,x2:x2,y2:y2,global:false,colorStops:stops.map(function(s){return {offset:s[0],color:s[1]};})}; }
+  /* flags: css = small flag, c = single colour for 3D, g = striped fill for the flat map */
+  var FL={
+    'Malaysia':{css:'f-my',c:'#FFCC00',g:grad(0,0,0,1,[[0,'#010066'],[.22,'#010066'],[.22,'#FFCC00'],[.3,'#FFCC00'],[.3,'#CC0001'],[.475,'#CC0001'],[.475,'#FFFFFF'],[.65,'#FFFFFF'],[.65,'#CC0001'],[.825,'#CC0001'],[.825,'#FFFFFF'],[1,'#FFFFFF']])},
+    'Saudi Arabia':{css:'f-sa',c:'#0B8A47',g:grad(0,0,0,1,[[0,'#006C35'],[.44,'#006C35'],[.44,'#FFFFFF'],[.56,'#FFFFFF'],[.56,'#006C35'],[1,'#006C35']])},
+    'United Arab Emirates':{css:'f-ae',c:'#F4F6FA',g:grad(0,0,1,0,[[0,'#EF3340'],[.26,'#EF3340'],[.26,'#00843D'],[.5,'#00843D'],[.5,'#FFFFFF'],[.75,'#FFFFFF'],[.75,'#111111'],[1,'#111111']])},
+    'United Kingdom':{css:'f-gb',c:'#2B5CE6',g:grad(0,0,1,0,[[0,'#012169'],[.3,'#012169'],[.3,'#FFFFFF'],[.42,'#FFFFFF'],[.42,'#C8102E'],[.58,'#C8102E'],[.58,'#FFFFFF'],[.7,'#FFFFFF'],[.7,'#012169'],[1,'#012169']])},
+    'United States':{css:'f-us',c:'#D8344A',g:grad(0,0,0,1,[[0,'#3C3B6E'],[.3,'#3C3B6E'],[.3,'#B22234'],[.44,'#B22234'],[.44,'#FFFFFF'],[.58,'#FFFFFF'],[.58,'#B22234'],[.72,'#B22234'],[.72,'#FFFFFF'],[.86,'#FFFFFF'],[.86,'#B22234'],[1,'#B22234']])},
+    'Bangladesh':{css:'f-bd',c:'#1DB37C',g:{type:'radial',x:.45,y:.5,r:.6,global:false,colorStops:[{offset:0,color:'#F42A41'},{offset:.4,color:'#F42A41'},{offset:.42,color:'#006A4E'},{offset:1,color:'#006A4E'}]}}
+  };
+  var BOUNDS={'United States':[[-126,50],[-66,24]]};
+  /* where each flag is stretched over its country (top-left and bottom-right, longitude / latitude) */
+  var BOX={'Malaysia':[[99.6,7.4],[119.3,.85]],'Saudi Arabia':[[34.5,32.2],[55.7,16.3]],'United Arab Emirates':[[51.5,26.1],[56.4,22.6]],'United Kingdom':[[-8.2,58.7],[1.8,49.9]],'United States':[[-125,49.4],[-66.9,24.5]],'Bangladesh':[[88,26.65],[92.7,20.7]]};
+  var FLAGC={};
+  function flagCanvas(n){
+    if(FLAGC[n]) return FLAGC[n];
+    var c=document.createElement('canvas'); c.width=300; c.height=200; var x=c.getContext('2d'), i, j;
+    function rect(col,a,b,w,h){ x.fillStyle=col; x.fillRect(a,b,w,h); }
+    function disc(col,a,b,r){ x.fillStyle=col; x.beginPath(); x.arc(a,b,r,0,6.2832); x.fill(); }
+    function line(col,w,a,b,c2,d){ x.strokeStyle=col; x.lineWidth=w; x.beginPath(); x.moveTo(a,b); x.lineTo(c2,d); x.stroke(); }
+    function star(col,a,b,r,pts){ x.fillStyle=col; x.beginPath(); for(var k=0;k<pts*2;k++){ var rr=k%2?r*.45:r, t=-1.5708+k*3.14159/pts; x.lineTo(a+Math.cos(t)*rr,b+Math.sin(t)*rr); } x.closePath(); x.fill(); }
+    if(n==='Malaysia'){ for(i=0;i<14;i++) rect(i%2?'#FFFFFF':'#CC0001',0,i*200/14,300,200/14+1); rect('#010066',0,0,150,200*8/14); disc('#FFCC00',62,57,40); disc('#010066',74,57,34); star('#FFCC00',104,57,24,14); }
+    else if(n==='Saudi Arabia'){ rect('#006C35',0,0,300,200); x.lineCap='round'; line('#FFFFFF',5,84,150,216,150); line('#FFFFFF',5,204,140,204,160); }
+    else if(n==='United Arab Emirates'){ rect('#00843D',0,0,300,67); rect('#FFFFFF',0,67,300,67); rect('#111111',0,133,300,67); rect('#EF3340',0,0,78,200); }
+    else if(n==='United Kingdom'){ rect('#012169',0,0,300,200); line('#FFFFFF',40,0,0,300,200); line('#FFFFFF',40,300,0,0,200); line('#C8102E',14,0,0,300,200); line('#C8102E',14,300,0,0,200); rect('#FFFFFF',117,0,66,200); rect('#FFFFFF',0,67,300,66); rect('#C8102E',130,0,40,200); rect('#C8102E',0,80,300,40); }
+    else if(n==='United States'){ for(i=0;i<13;i++) rect(i%2?'#FFFFFF':'#B22234',0,i*200/13,300,200/13+1); rect('#3C3B6E',0,0,120,200*7/13); for(i=0;i<9;i++) for(j=0;j<(i%2?5:6);j++) star('#FFFFFF',(i%2?20:10)+j*20,11+i*11.3,4.4,5); }
+    else { rect('#006A4E',0,0,300,200); disc('#F42A41',135,100,66); }
+    FLAGC[n]=c; return c;
+  }
+  /* stretch each flag over its country on the flat map; done after the map is laid out */
+  function paintFlags(ch,items){
+    try{ ch.setOption({series:[{data:items.map(function(it){ var b=BOX[it.name]; if(!b) return it;
+      var p1=ch.convertToPixel({seriesIndex:0},b[0]), p2=ch.convertToPixel({seriesIndex:0},b[1]);
+      var pat={image:flagCanvas(it.name),repeat:'no-repeat',x:p1[0],y:p1[1],scaleX:(p2[0]-p1[0])/300,scaleY:(p2[1]-p1[1])/200};
+      it.itemStyle=Object.assign({},it.itemStyle,{areaColor:pat}); it.emphasis={itemStyle:{areaColor:pat}}; return it; })}]}); }catch(e){}
+  }
+  var SHORT={'Saudi Arabia':'KSA','United Arab Emirates':'UAE','United Kingdom':'UK','United States':'USA'};
+  var CH3=['Bank branch','Bank app','Exchange house','MTO','Remittance app','Hundi','Carried cash','Cash via others','Other'];
+  var CURINFO={GBP:['f-gb','Pound sterling','United Kingdom'],MYR:['f-my','Malaysian ringgit','Malaysia'],AED:['f-ae','UAE dirham','United Arab Emirates'],SAR:['f-sa','Saudi riyal','Saudi Arabia'],USD:['f-us','US dollar','United States'],BDT:['f-bd','Bangladeshi taka','Bangladesh']};
+  var has3D=(function(){ try{ var c=document.createElement('canvas'); return !!(c.getContext('webgl')||c.getContext('experimental-webgl')); }catch(e){ return false; } })();
+  var mode3D=has3D, mapChart=null, charts=[], DATA=null, R=null, state={country:'all',cur:'USD'}, range={s:null,q:null};
+
+  /* one small map per country, cut from the world map before anything is drawn */
+  var hasWorld=false;
+  try{ var WM=echarts.getMap('world'), GJ=WM&&(WM.geoJSON||WM.geoJson);
+    if(GJ){ hasWorld=true; Object.keys(FL).forEach(function(n){ var f=GJ.features.filter(function(x){return x.properties&&x.properties.name===n;})[0];
+      if(f) echarts.registerMap('rs-'+n,{type:'FeatureCollection',UTF8Encoding:GJ.UTF8Encoding,UTF8Scale:GJ.UTF8Scale,features:[JSON.parse(JSON.stringify(f))]}); }); }
+  }catch(e){}
+
+  function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+  function mk(id,force2d){ var c=echarts.init($(id),null,{renderer:(mode3D&&!force2d)?'canvas':'svg'}); charts.push(c); return c; }
+  var TT={backgroundColor:'#123024',borderColor:EDGE,textStyle:{color:INK,fontFamily:'Plus Jakarta Sans'}};
+  var M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  function fmtDay(s){ var p=s.split('-'); return (+p[2])+' '+M[+p[1]-1]; }
+  function light(){ return {main:{intensity:1.15,shadow:true,shadowQuality:'medium',alpha:40,beta:40},ambient:{intensity:.4}}; }
+  function axis3D(){ return {name:'',axisLabel:{color:MUTED,fontSize:11},axisLine:{lineStyle:{color:LINE}},axisPointer:{lineStyle:{color:'#62806F'}},splitLine:{lineStyle:{color:SPLIT}},axisTick:{show:false}}; }
+  function axis2D(extra){ return Object.assign({axisLine:{lineStyle:{color:LINE}},axisLabel:{color:MUTED},splitLine:{lineStyle:{color:SPLIT}},axisTick:{show:false}},extra||{}); }
+  function none(ch,text){ ch.setOption({title:{text:text||'No interviews yet',left:'center',top:'middle',textStyle:{color:MUTED,fontSize:14,fontWeight:400}}}); }
+  function wrapLabel(s,w){ var words=String(s).split(' '), lines=[''], i; for(i=0;i<words.length;i++){ if((lines[lines.length-1]+' '+words[i]).trim().length>w && lines[lines.length-1]){ lines.push(words[i]); } else { lines[lines.length-1]=(lines[lines.length-1]+' '+words[i]).trim(); } } if(lines.length>3){ lines=lines.slice(0,3); lines[2]=lines[2].replace(/.{1}$/,'…'); } return lines.join('\n'); }
+  function view(){ return DATA.views[state.country]||DATA.views.all; }
+  function cidx(){ if(state.country==='all') return -1; for(var i=0;i<DATA.countries.length;i++) if(DATA.countries[i][0]===state.country) return i; return -1; }
+  function selName(){ var i=cidx(); return i<0?null:DATA.countries[i][1]; }
+  function num(v,dp){ if(v===null||v===undefined||isNaN(v)) return '–'; return Number(v).toLocaleString(state.cur==='BDT'?'en-IN':'en-US',{maximumFractionDigits:dp===undefined?(Math.abs(v)>=100?0:2):dp}); }
+  function money(v){ if(v===null||v===undefined||isNaN(v)) return '–'; return (state.cur==='BDT'?'Tk ':'$')+num(v,Math.abs(v)>=100?0:2); }
+  function pc(v){ return (v===null||v===undefined||isNaN(v))?'–':(+v).toLocaleString('en-US',{maximumFractionDigits:1})+'%'; }
+
+  /* ---------- currency: every amount is converted here, with the rates on screen ---------- */
+  function toShow(amount,cur){ var usd=amount/R[DATA.currencies[cur]]; return state.cur==='BDT'?usd*R.BDT:usd; }
+  function quantile(s,q){ if(!s.length) return null; var pos=(s.length-1)*q, lo=Math.floor(pos), hi=Math.ceil(pos); return s[lo]+(s[hi]-s[lo])*(pos-lo); }
+  function median(a){ return quantile(a.slice().sort(function(x,y){return x-y;}),.5); }
+  /* answers to one number question, after the country and date filters */
+  function values(key,rg){
+    var N=DATA.numbers[key], ci=cidx(), out=[];
+    N.rows.forEach(function(r,i){
+      if(ci>=0&&r[2]!==ci) return;
+      if(rg&&(r[1]<rg[0]||r[1]>rg[1])) return;
+      var v;
+      if(N.unit==='money') v=toShow(r[0],r[4]);
+      else if(key==='FEE_PCT'){ var a=toShow(r[5],r[6]); if(!a) return; v=100*toShow(r[0],r[4])/a; }
+      else v=r[0];
+      out.push({v:v,f:r[3],id:N.ids[i]||''});
+    });
+    return out;
+  }
+  function med(key){ var a=values(key).map(function(x){return x.v;}); return {v:a.length>=DATA.min_n?median(a):null,n:a.length}; }
+  function nice(x){ if(x<=0) return 1; var e=Math.floor(Math.log10(x)), f=x/Math.pow(10,e), c=[1,2,2.5,5,10]; for(var i=0;i<c.length;i++) if(f<=c[i]) return c[i]*Math.pow(10,e); return Math.pow(10,e+1); }
+  function erf(x){ var t=1/(1+.3275911*Math.abs(x)), y=1-(((((1.061405429*t-1.453152027)*t)+1.421413741)*t-.284496736)*t+.254829592)*t*Math.exp(-x*x); return x<0?-y:y; }
+  function cdf(x,mu,sd){ return .5*(1+erf((x-mu)/(sd*Math.SQRT2))); }
+  function describe(rows,whole){
+    var n=rows.length; if(!n) return {n:0}; if(n<DATA.min_n) return {n:n,few:true};
+    var s=rows.map(function(x){return x.v;}).sort(function(a,b){return a-b;});
+    var mean=s.reduce(function(a,b){return a+b;},0)/n, ss=s.reduce(function(a,b){return a+(b-mean)*(b-mean);},0), sd=n>1?Math.sqrt(ss/(n-1)):0;
+    var q1=quantile(s,.25), md=quantile(s,.5), q3=quantile(s,.75), iqr=q3-q1, lo=q1-1.5*iqr, hi=q3+1.5*iqr;
+    var inside=s.filter(function(x){return x>=lo&&x<=hi;}); if(!inside.length) inside=s;
+    var out=rows.filter(function(x){return x.v<lo||x.v>hi;}).sort(function(a,b){return Math.abs(b.v-md)-Math.abs(a.v-md);});
+    var cnt={}, best=0; s.forEach(function(x){ var k=Math.round(x*100)/100; cnt[k]=(cnt[k]||0)+1; if(cnt[k]>best) best=cnt[k]; });
+    var mode=best>1?Object.keys(cnt).filter(function(k){return cnt[k]===best;}).map(Number).slice(0,3):[];
+    var normal='Too few answers to judge', jb=null, skew=null;
+    if(n>=8&&sd>0){ var m2=ss/n, m3=0, m4=0; s.forEach(function(x){ var d=x-mean; m3+=d*d*d; m4+=d*d*d*d; }); m3/=n; m4/=n;
+      skew=m3/Math.pow(m2,1.5); var J=n/6*(skew*skew+Math.pow(m4/(m2*m2)-3,2)/4); jb=Math.exp(-J/2); normal=jb>.05?'Close to normal':'Not normal'; }
+    var mn=s[0], mx=s[n-1], cap=iqr>0?Math.min(mx,q3+3*iqr):mx, over=cap<mx, edges=[];
+    if(whole&&s.every(function(x){return x===Math.round(x);})&&cap-mn<=16){ for(var i=0;i<=cap-mn+1;i++) edges.push(mn-.5+i); }
+    else if(cap<=mn){ edges=[mn,mn+1]; }
+    else { var step=nice((cap-mn)/12), e=Math.floor(mn/step)*step; edges=[e]; while(edges[edges.length-1]<cap-1e-9){ e=+(e+step).toPrecision(12); edges.push(e); } }
+    var counts=edges.slice(1).map(function(){return 0;});
+    s.forEach(function(x){ var i=0; while(i<counts.length-1&&x>=edges[i+1]) i++; counts[i]++; });
+    var curve=counts.map(function(_,i){ return sd>0?+(n*(cdf(edges[i+1],mean,sd)-cdf(edges[i],mean,sd))).toFixed(2):0; });
+    var by={}; [0,1].forEach(function(f){ var a=rows.filter(function(x){return x.f===f;}).map(function(x){return x.v;}); by[F[f]]={n:a.length};
+      if(a.length>=DATA.min_n){ by[F[f]].mean=a.reduce(function(p,c){return p+c;},0)/a.length; by[F[f]].median=median(a); } });
+    return {n:n,mean:mean,median:md,mode:mode,sd:sd,min:mn,max:mx,q1:q1,q3:q3,whisker_low:inside[0],whisker_high:inside[inside.length-1],normal:normal,jb_p:jb,skew:skew,
+      outlier_n:out.length,outliers:out.slice(0,40).map(function(o){return {id:o.id,value:o.v,extreme:o.v<q1-3*iqr||o.v>q3+3*iqr};}),
+      hist:{edges:edges,counts:counts,normal:curve,over:over},by_group:by};
+  }
+  /* answers to one choice question, after the country and date filters */
+  function tally(key,rg){
+    var A=DATA.answers[key], ci=cidx(), n=0, nf=[0,0], cnt=[], bf=[[],[]];
+    A.cells.forEach(function(c){
+      if(ci>=0&&c[1]!==ci) return;
+      if(rg&&(c[0]<rg[0]||c[0]>rg[1])) return;
+      n+=c[3]; nf[c[2]]+=c[3];
+      for(var j=4;j<c.length;j+=2){ cnt[c[j]]=(cnt[c[j]]||0)+c[j+1]; bf[c[2]][c[j]]=(bf[c[2]][c[j]]||0)+c[j+1]; }
+    });
+    var opts=A.options.map(function(l,i){ return {label:l,count:cnt[i]||0,bn:bf[0][i]||0,en:bf[1][i]||0,last:A.last.indexOf(i)>=0?1:0}; });
+    if(A.sort){ opts=opts.filter(function(o){return o.count;}); opts.sort(function(a,b){return (a.last-b.last)||(b.count-a.count);});
+      if(A.top&&opts.length>A.top+1){ var rest=opts.slice(A.top); opts=opts.slice(0,A.top); opts.push({label:rest.length+' others',count:rest.reduce(function(p,o){return p+o.count;},0),bn:rest.reduce(function(p,o){return p+o.bn;},0),en:rest.reduce(function(p,o){return p+o.en;},0)}); } }
+    return {n:n,nf:{bn:nf[0],en:nf[1]},options:opts};
+  }
+  /* date pickers -> [first day index, last day index] or null for all dates */
+  function readRange(a,b){ var f=$(a).value, t=$(b).value, D=DATA.days; if(!f&&!t) return null;
+    var lo=0, hi=D.length-1; if(f){ lo=D.length; for(var i=0;i<D.length;i++) if(D[i]>=f){ lo=i; break; } } if(t){ hi=-1; for(var j=D.length-1;j>=0;j--) if(D[j]<=t){ hi=j; break; } }
+    return [lo,hi]; }
+
+  function bar3D(el, xs, ys, cells, opts){
+    opts=opts||{};
+    el.setOption({tooltip:Object.assign({formatter:function(p){ return esc(xs[p.value[0]]).replace(/\n/g,' ')+(ys.length>1?' · '+esc(ys[p.value[1]]):'')+': <b>'+p.value[2]+'</b>'; }},TT),
+      xAxis3D:Object.assign(axis3D(),{type:'category',data:xs,axisLabel:{color:MUTED,fontSize:11,interval:opts.interval}}),
+      yAxis3D:Object.assign(axis3D(),{type:'category',data:ys,axisLabel:{color:MUTED,fontSize:11}}),
+      zAxis3D:Object.assign(axis3D(),{type:'value',minInterval:1}),
+      grid3D:{boxWidth:opts.boxWidth||Math.min(220,Math.max(90,xs.length*16)),boxDepth:opts.boxDepth||(ys.length>1?46:22),boxHeight:opts.boxHeight||70,
+        environment:'none',light:light(),postEffect:{enable:false},
+        viewControl:{alpha:opts.alpha||22,beta:opts.beta||28,distance:opts.distance||210,autoRotate:false,zoomSensitivity:0.6,minAlpha:5,maxAlpha:80},
+        axisPointer:{show:false}},
+      series:[{type:'bar3D',shading:'lambert',bevelSize:0.35,bevelSmoothness:3,barSize:opts.barSize,
+        data:cells.map(function(c){return {value:[c[0],c[1],c[2]],itemStyle:{color:c[3],opacity:1}};}),
+        label:{show:false},emphasis:{label:{show:true,formatter:function(p){return p.value[2];},textStyle:{color:'#fff',fontSize:13,backgroundColor:'rgba(6,18,14,.85)',padding:[2,6],borderRadius:3}},itemStyle:{color:'#ffffff'}}}]});
+  }
+  function formCells(keys, getter){ var cells=[]; keys.forEach(function(k,i){ var g=getter(k)||{}; F.forEach(function(f,j){ cells.push([i,j,g[f]||0,FC[f]]); }); }); return cells; }
+  var FY=F.map(function(f){return FN[f];});
+  function formBars(id, keys, labels, getter, o){
+    o=o||{}; var ch=mk(id);
+    if(!keys.length){ none(ch); return; }
+    if(mode3D){ bar3D(ch,labels,FY,formCells(keys,getter),o.g3||{}); return; }
+    ch.setOption({tooltip:Object.assign({trigger:'axis',axisPointer:{type:'shadow'}},TT),grid:{left:8,right:12,top:12,bottom:8,containLabel:true},
+      xAxis:axis2D({type:'category',data:labels,splitLine:{show:false},axisLabel:{color:MUTED,interval:o.interval===undefined?'auto':o.interval,fontSize:11}}),yAxis:axis2D({type:'value',minInterval:1}),
+      series:F.map(function(f,i){return {name:FN[f],type:'bar',stack:o.stack?'g':undefined,barMaxWidth:o.barMax||26,itemStyle:{color:FC[f],borderRadius:(o.stack&&i===0)?0:[4,4,0,0]},data:keys.map(function(k){return (getter(k)||{})[f]||0;})};})});
+  }
+  function rankBars(id, pairs, o){
+    o=o||{}; var ch=mk(id);
+    if(!pairs.length){ none(ch,o.empty); return; }
+    var names=pairs.map(function(p){return p[0];});
+    if(mode3D){ bar3D(ch,names,['Interviews'],pairs.map(function(p,i){return [i,0,p[1],NON];}),{boxWidth:Math.max(140,names.length*22),boxDepth:20,alpha:20,beta:16,distance:170,interval:0}); return; }
+    var rev=pairs.slice().reverse();
+    ch.setOption({tooltip:Object.assign({trigger:'axis',axisPointer:{type:'shadow'}},TT),grid:{left:8,right:36,top:8,bottom:8,containLabel:true},
+      yAxis:axis2D({type:'category',data:rev.map(function(p){return p[0];}),splitLine:{show:false},axisLabel:{color:INK,fontSize:12}}),xAxis:axis2D({type:'value',minInterval:1}),
+      series:[{type:'bar',barMaxWidth:16,label:{show:true,position:'right',color:MUTED},data:rev.map(function(p){return {value:p[1],itemStyle:{color:new echarts.graphic.LinearGradient(0,0,1,0,[{offset:0,color:'#2C9E8C'},{offset:1,color:NON}]),borderRadius:[0,4,4,0]}};})}]});
+  }
+
+  /* ---------- map: the world, or one country when a country is chosen ---------- */
+  function drawMap(){
+    var all=DATA.views.all, names=DATA.countries.map(function(c){return c[1];}), max=1, sel=selName();
+    names.forEach(function(n){ max=Math.max(max,all.country[n]||0); });
+    $('map-title').textContent=sel?'Interviews in '+sel:'Interviews by destination country';
+    if(mapChart){ mapChart.dispose(); } var ch=mapChart=echarts.init($('c-map'),null,{renderer:'canvas'});
+    var tip=function(p){ var n=p.name; if(n==='Bangladesh') return '<b>Bangladesh</b><br>Where the money is sent';
+      if(names.indexOf(n)<0) return ''; var g=all.country_form[n]||{};
+      return '<b>'+esc(n)+'</b><br>Interviews: '+(all.country[n]||0)+'<br><span style="color:'+BEN+'">Bangla '+(g.bn||0)+'</span> · <span style="color:'+NON+'">English '+(g.en||0)+'</span>'; };
+    var lab3={show:true,distance:2,textStyle:{color:'#fff',fontSize:12,fontWeight:600,backgroundColor:'rgba(6,18,14,.8)',padding:[3,7],borderRadius:4}};
+    if(!hasWorld){ rankFallback(ch,names,all); }
+    else if(sel&&echarts.getMap('rs-'+sel)){
+      var v=all.country[sel]||0;
+      if(mode3D){
+        ch.setOption({tooltip:Object.assign({formatter:tip},TT),series:[{type:'map3D',map:'rs-'+sel,boundingCoords:BOUNDS[sel],boxWidth:90,boxHeight:10,regionHeight:6,shading:'lambert',environment:'none',
+          light:{main:{intensity:.9,shadow:true,shadowQuality:'medium',alpha:50,beta:25},ambient:{intensity:.55}},
+          viewControl:{distance:130,alpha:52,beta:8,autoRotate:false,minAlpha:10,maxAlpha:85,zoomSensitivity:0.6},groundPlane:{show:false},postEffect:{enable:false},
+          itemStyle:{color:FL[sel].c,borderColor:'#EEF6F0',borderWidth:1,opacity:1},label:Object.assign({},lab3,{formatter:function(){return sel+'  '+v;}}),
+          emphasis:{label:{show:true},itemStyle:{color:FL[sel].c}},data:[{name:sel,value:v}]}]});
+      } else {
+        ch.setOption({tooltip:Object.assign({trigger:'item',formatter:tip},TT),series:[{type:'map',map:'rs-'+sel,boundingCoords:BOUNDS[sel],roam:true,layoutCenter:['50%','50%'],layoutSize:'88%',
+          label:{show:true,color:'#fff',fontWeight:700,fontSize:15,textBorderColor:'#06120E',textBorderWidth:4,formatter:sel+'\n'+v+' interviews'},
+          itemStyle:{areaColor:FL[sel].g,borderColor:'#EEF6F0',borderWidth:1.2},emphasis:{label:{color:'#fff'},itemStyle:{areaColor:FL[sel].g}},select:{disabled:true},data:[{name:sel,value:v}]}]});
+        paintFlags(ch,[{name:sel,value:v}]);
+      }
+    }
+    else if(mode3D){
+      var data=names.map(function(n){ var c=all.country[n]||0; return {name:n,value:c,height:1.5+(c/max)*11,itemStyle:{color:(FL[n]||{}).c||NON,opacity:1},label:Object.assign({},lab3,{distance:n==='United Arab Emirates'?10:2,formatter:function(){return (SHORT[n]||n)+'  '+c;}})}; });
+      data.push({name:'Bangladesh',value:0,height:2.2,itemStyle:{color:FL.Bangladesh.c,opacity:1}});
+      ch.setOption({tooltip:Object.assign({formatter:tip},TT),
+        series:[{type:'map3D',map:'world',boxWidth:150,boxHeight:14,regionHeight:0.6,shading:'lambert',environment:'none',
+          light:{main:{intensity:.85,shadow:true,shadowQuality:'medium',alpha:50,beta:25},ambient:{intensity:.55}},
+          viewControl:{distance:98,alpha:60,beta:0,center:[8,0,-2],autoRotate:false,minAlpha:10,maxAlpha:85,zoomSensitivity:0.6},
+          groundPlane:{show:false},postEffect:{enable:false},
+          itemStyle:{color:ZERO,borderColor:EDGE,borderWidth:0.6,opacity:1},label:{show:false},
+          emphasis:{label:{show:false},itemStyle:{color:'#1F4234'}},data:data}]});
+    } else {
+      var d2=names.map(function(n){ var c=all.country[n]||0; return {name:n,value:c,itemStyle:{areaColor:(FL[n]||{}).g||NON,borderColor:'#EEF6F0',borderWidth:.8},label:{show:true,offset:n==='United Arab Emirates'?[26,14]:(n==='Saudi Arabia'?[-10,-4]:null),formatter:(SHORT[n]||n)+' '+c}}; });
+      d2.push({name:'Bangladesh',value:0,itemStyle:{areaColor:FL.Bangladesh.g,borderColor:'#EEF6F0',borderWidth:.8}});
+      ch.setOption({tooltip:Object.assign({trigger:'item',formatter:tip},TT),
+        series:[{type:'map',map:'world',roam:true,layoutCenter:['50%','60%'],layoutSize:'165%',label:{show:false,color:'#fff',fontWeight:700,fontSize:11,textBorderColor:'#06120E',textBorderWidth:3},
+          itemStyle:{areaColor:ZERO,borderColor:EDGE,borderWidth:0.6},emphasis:{label:{color:'#fff'},itemStyle:{areaColor:'#1F4234'}},select:{disabled:true},data:d2}]});
+      paintFlags(ch,d2);
+    }
+    ch.on('click',function(p){ var c=DATA.countries.filter(function(x){return x[1]===p.name;})[0]; if(c&&!sel) setCountry(c[0]); });
+    var list=names.slice().sort(function(a,b){return (all.country[b]||0)-(all.country[a]||0);});
+    $('rank').innerHTML=list.map(function(n){ var c=all.country[n]||0, g=all.country_form[n]||{}, code=DATA.countries.filter(function(x){return x[1]===n;})[0][0], t=DATA.targets[code];
+      return '<li class="'+(c?'':'zero')+(sel===n?' on':'')+'" data-c="'+code+'" tabindex="0" role="button"><span class="flag '+((FL[n]||{}).css||'')+'"></span><span class="nm">'+esc(n)+'</span><span class="ct">'+c+(t?' / '+t:'')+'</span>'+
+        '<span class="sp"><span style="color:'+BEN+'">Bangla '+(g.bn||0)+'</span> · <span style="color:'+NON+'">English '+(g.en||0)+'</span>'+(t?' · '+Math.round(c/t*100)+'% of target':'')+'</span></li>'; }).join('');
+  }
+  function rankFallback(ch,names,all){ var rev=names.slice().sort(function(a,b){return (all.country[a]||0)-(all.country[b]||0);});
+    ch.setOption({tooltip:Object.assign({trigger:'axis',axisPointer:{type:'shadow'}},TT),grid:{left:8,right:36,top:8,bottom:8,containLabel:true},
+      yAxis:axis2D({type:'category',data:rev,splitLine:{show:false},axisLabel:{color:INK}}),xAxis:axis2D({type:'value',minInterval:1}),
+      series:F.map(function(f){return {name:FN[f],type:'bar',stack:'g',barMaxWidth:26,itemStyle:{color:FC[f]},data:rev.map(function(n){return (all.country_form[n]||{})[f]||0;})};})}); }
+  $('rank').addEventListener('click',function(e){ var li=e.target.closest('li'); if(li) setCountry(state.country===li.getAttribute('data-c')?'all':li.getAttribute('data-c')); });
+  $('rank').addEventListener('keydown',function(e){ if(e.key==='Enter'||e.key===' '){ var li=e.target.closest('li'); if(li){ e.preventDefault(); li.click(); } } });
+
+  /* ---------- currency section ---------- */
+  function custom(){ return Object.keys(R).some(function(k){return Math.abs(R[k]-DATA.rates_per_usd[k])>1e-9;}); }
+  function drawFx(){
+    var t=state.cur, fx=function(v){ return (+v).toLocaleString('en-US',{maximumFractionDigits:v>=100?2:4}); };
+    var card=function(c,eq,also){ var i=CURINFO[c]; return '<div class="rate"><div class="top"><span class="flag '+i[0]+'"></span>'+c+' <small>'+i[1]+'</small></div>'+eq+'<div class="also">'+also+'</div></div>'; };
+    var html=card('USD','<div class="eq">1 USD = <input type="number" id="fx-BDT" data-k="BDT" min="0" step="any" inputmode="decimal" value="'+(+R.BDT.toFixed(4))+'" aria-label="BDT per 1 USD"> BDT</div>','Bangladesh');
+    ['GBP','MYR','AED','SAR'].forEach(function(c){ var usd=1/R[c], bdt=R.BDT/R[c], v=t==='BDT'?bdt:usd;
+      html+=card(c,'<div class="eq">1 '+c+' = <input type="number" id="fx-'+c+'" data-k="'+c+'" min="0" step="any" inputmode="decimal" value="'+(+v.toFixed(4))+'" aria-label="'+t+' per 1 '+c+'"> '+t+'</div>','= '+fx(usd)+' USD · '+fx(bdt)+' BDT · '+CURINFO[c][2]); });
+    $('rates').innerHTML=html; $('fx-note').hidden=!custom(); $('fx-dirty').hidden=true;
+  }
+  $('rates').addEventListener('input',function(){ $('fx-dirty').hidden=false; $('fx-saved').hidden=true; });
+  $('fx-save').addEventListener('click',function(){
+    var bdt=parseFloat($('fx-BDT').value), next={USD:1,BDT:bdt>0?bdt:R.BDT};
+    ['GBP','MYR','AED','SAR'].forEach(function(c){ var x=parseFloat($('fx-'+c).value); next[c]=x>0?(state.cur==='BDT'?next.BDT/x:1/x):R[c]; });
+    R=next; var kept=true; try{ localStorage.setItem('rs-rates',JSON.stringify(R)); }catch(err){ kept=false; }
+    draw(); $('fx-saved').textContent=kept?'Saved':'Applied'; $('fx-saved').hidden=false; setTimeout(function(){ $('fx-saved').hidden=true; },2500); });
+  $('fx-reset').addEventListener('click',function(){ R=JSON.parse(JSON.stringify(DATA.rates_per_usd)); try{ localStorage.removeItem('rs-rates'); }catch(err){} draw(); });
+
+  /* ---------- country comparisons ---------- */
+  function mean(a){ return a.length?a.reduce(function(p,c){return p+c;},0)/a.length:null; }
+  function stat(a){ var ok=a.length>=DATA.min_n; return {n:a.length,avg:ok?mean(a):null,med:ok?median(a):null}; }
+  /* one bar per row, values shown as money */
+  function moneyBars(id,rows,color){
+    var have=rows.filter(function(r){return r[1]!==null;});
+    $(id).style.height=(mode3D?300:Math.max(300,have.length*34+50))+'px';
+    var ch=mk(id);
+    if(!have.length){ none(ch,'Not enough answers yet'); return; }
+    if(mode3D){ var xs=have.map(function(r){return wrapLabel(r[0].split(',')[0],14);});
+      ch.setOption({tooltip:Object.assign({formatter:function(p){ return esc(have[p.value[0]][0])+': <b>'+money(p.value[2])+'</b>'; }},TT),
+        xAxis3D:Object.assign(axis3D(),{type:'category',data:xs,axisLabel:{color:MUTED,fontSize:11,interval:0}}),
+        yAxis3D:Object.assign(axis3D(),{type:'category',data:[''],axisLabel:{show:false}}),
+        zAxis3D:Object.assign(axis3D(),{type:'value',axisLabel:{color:MUTED,fontSize:11,formatter:function(v){return compact(v);}}}),
+        grid3D:{boxWidth:Math.min(240,Math.max(130,have.length*34)),boxDepth:24,boxHeight:80,environment:'none',light:light(),postEffect:{enable:false},
+          viewControl:{alpha:18,beta:14,distance:150,autoRotate:false,zoomSensitivity:0.6,minAlpha:5,maxAlpha:80},axisPointer:{show:false}},
+        series:[{type:'bar3D',shading:'lambert',bevelSize:0.35,bevelSmoothness:3,data:have.map(function(r,i){return {value:[i,0,+r[1].toFixed(2)],itemStyle:{color:color,opacity:1}};}),
+          label:{show:false},emphasis:{label:{show:true,formatter:function(p){return money(p.value[2]);},textStyle:{color:'#fff',fontSize:13,backgroundColor:'rgba(6,18,14,.85)',padding:[2,6],borderRadius:3}},itemStyle:{color:'#ffffff'}}}]});
+      return; }
+    var rev=have.slice().reverse();
+    ch.setOption({tooltip:Object.assign({trigger:'axis',axisPointer:{type:'shadow'},formatter:function(ps){ var r=rev[ps[0].dataIndex]; return '<b>'+esc(r[0])+'</b><br>'+money(r[1]); }},TT),grid:{left:8,right:84,top:8,bottom:8,containLabel:true},
+      yAxis:axis2D({type:'category',data:rev.map(function(r){return wrapLabel(r[0],$(id).clientWidth<520?20:34);}),splitLine:{show:false},axisLabel:{color:INK,fontSize:12,lineHeight:15,interval:0}}),
+      xAxis:axis2D({type:'value',axisLabel:{color:MUTED,formatter:function(v){return compact(v);}}}),
+      series:[{type:'bar',barMaxWidth:18,label:{show:true,position:'right',color:MUTED,formatter:function(p){return money(p.value);}},
+        data:rev.map(function(r){return {value:+r[1].toFixed(2),itemStyle:{color:color,borderRadius:[0,4,4,0]}};})}]});
+  }
+  function compact(v){ var a=Math.abs(v); if(state.cur==='BDT'){ if(a>=1e7) return +(v/1e7).toFixed(1)+' Cr'; if(a>=1e5) return +(v/1e5).toFixed(1)+' L'; } else if(a>=1e6) return +(v/1e6).toFixed(1)+'M'; if(a>=1e3) return +(v/1e3).toFixed(1)+'K'; return +(+v).toFixed(a<10?2:0)+''; }
+  function drawCompare(){
+    var C=DATA.countries, sel=cidx(), onRow=function(i){ return i===sel?' style="background:rgba(233,185,73,.08)"':''; };
+    var by=function(key){ var N=DATA.numbers[key], out=C.map(function(){return [];});
+      N.rows.forEach(function(r){ if(r[2]<0) return; var v;
+        if(key==='FEE_PCT'){ var a=toShow(r[5],r[6]); if(!a) return; v=100*toShow(r[0],r[4])/a; } else v=toShow(r[0],r[4]);
+        out[r[2]].push(v); }); return out; };
+    /* last transaction */
+    var d6=by('D6'), d7=by('D7'), fee=by('FEE_PCT'), last=C.map(function(c,i){ return {name:c[1],s:stat(d6[i]),r:stat(d7[i]),f:stat(fee[i])}; });
+    moneyBars('c-last',last.map(function(x){return [x.name,x.s.avg];}),BEN);
+    $('th-last-a').textContent='Average sent ('+state.cur+')'; $('th-last-m').textContent='Median sent ('+state.cur+')'; $('th-last-r').textContent='Average received ('+state.cur+')';
+    $('t-last').tBodies[0].innerHTML=last.map(function(x,i){ return '<tr'+onRow(i)+'><td><span class="flag '+((FL[x.name]||{}).css||'')+'" style="vertical-align:-3px;margin-right:8px"></span>'+esc(x.name)+'</td><td class="num">'+x.s.n+'</td><td class="num">'+money(x.s.avg)+'</td><td class="num">'+money(x.s.med)+'</td><td class="num">'+money(x.r.avg)+'</td><td class="num">'+pc(x.f.avg)+'</td></tr>'; }).join('');
+    /* income by country */
+    var inc=by('B9').map(function(a,i){ return {name:C[i][1],s:stat(a)}; });
+    moneyBars('c-inc-c',inc.map(function(x){return [x.name,x.s.avg];}),NON);
+    $('t-inc-c').tBodies[0].innerHTML=inc.map(function(x,i){ return '<tr'+onRow(i)+'><td><span class="flag '+((FL[x.name]||{}).css||'')+'" style="vertical-align:-3px;margin-right:8px"></span>'+esc(x.name)+'</td><td class="num">'+x.s.n+'</td><td class="num">'+money(x.s.avg)+'</td><td class="num">'+money(x.s.med)+'</td></tr>'; }).join('');
+    /* income by profession (follows the country filter) */
+    var jobs=DATA.jobs.map(function(){return [];});
+    DATA.income_by_job.forEach(function(r){ if(sel>=0&&r[2]!==sel) return; jobs[r[3]].push(toShow(r[0],r[1])); });
+    var jr=DATA.jobs.map(function(l,i){ return {name:l.replace(/\s*\(.*$/,''),s:stat(jobs[i])}; }).filter(function(x){return x.s.n;}).sort(function(a,b){ return (b.s.avg===null?-1:b.s.avg)-(a.s.avg===null?-1:a.s.avg); });
+    $('h-inc-j').textContent='Average income by profession'+(sel>=0?' · '+C[sel][1]:'');
+    moneyBars('c-inc-j',jr.map(function(x){return [x.name,x.s.avg];}),BEN);
+    $('t-inc-j').tBodies[0].innerHTML=jr.map(function(x){ return '<tr><td>'+esc(x.name)+'</td><td class="num">'+x.s.n+'</td><td class="num">'+money(x.s.avg)+'</td><td class="num">'+money(x.s.med)+'</td></tr>'; }).join('')||'<tr><td colspan="4" class="empty">No answers yet.</td></tr>';
+    /* hundi */
+    var hr=DATA.channel_amounts[5]||[], hun=C.map(function(c,i){ var rows=hr.filter(function(r){return r[2]===i;}), ch=((DATA.views[c[0]]||{}).channels||[])[5]||{base:0,used:0};
+      var t=rows.map(function(r){return r[3];}).filter(function(x){return x!==null&&x!==undefined;});
+      return {name:c[1],base:ch.base,used:ch.used,s:stat(rows.map(function(r){return toShow(r[0],r[1]);})),t:t.length>=DATA.min_n?mean(t):null}; });
+    moneyBars('c-hundi',hun.map(function(x){return [x.name,x.s.avg];}),'#FF8A6B');
+    $('t-hundi').tBodies[0].innerHTML=hun.map(function(x,i){ return '<tr'+onRow(i)+'><td><span class="flag '+((FL[x.name]||{}).css||'')+'" style="vertical-align:-3px;margin-right:8px"></span>'+esc(x.name)+'</td><td class="num">'+x.base+'</td><td class="num">'+x.used+'</td><td class="num">'+pc(x.base?x.used/x.base*100:null)+'</td><td class="num">'+money(x.s.avg)+'</td><td class="num">'+money(x.s.med)+'</td><td class="num">'+(x.t===null?'–':num(x.t,1))+'</td></tr>'; }).join('');
+  }
+
+  /* ---------- everything ---------- */
+  function draw(){
+    charts.forEach(function(c){c.dispose();}); charts=[];
+    var d=view(), t=d.totals;
+    $('updated').textContent=DATA.updated;
+    $('k-int').textContent=t.interviews; $('k-today').textContent=t.today; $('k-7').textContent=t.last7;
+    $('k-ref').textContent=t.refused; $('k-part').textContent=t.partial; $('k-reo').textContent=t.reopened;
+    $('k-bn').textContent=d.form.bn||0; $('k-en').textContent=d.form.en||0;
+    [].forEach.call(document.querySelectorAll('.chip'),function(b){ b.setAttribute('aria-pressed',b.getAttribute('data-c')===state.country); });
+    [].forEach.call(document.querySelectorAll('.cur'),function(x){ x.setAttribute('aria-pressed',x.getAttribute('data-c')===state.cur); });
+
+    drawMap(); drawFx();
+
+    var days=Object.keys(d.timeline);
+    formBars('c-time',days,days.map(fmtDay),function(k){return d.timeline_form[k];},{stack:true,g3:{interval:Math.max(0,Math.ceil(days.length/7)-1),boxWidth:200,boxDepth:40,alpha:22,beta:16,distance:175}});
+    var cs=Object.keys(d.country).sort(function(a,b){return d.country[b]-d.country[a];});
+    formBars('c-div',cs,cs.map(function(n){return wrapLabel(n,14);}),function(k){return d.country_form[k];},{interval:0,barMax:24,g3:{boxWidth:Math.max(110,cs.length*30),boxDepth:44,distance:165,beta:24}});
+    rankBars('c-dist',d.city,{empty:'No city recorded'});
+    rankBars('c-prov',d.providers.slice(0,12),{empty:'No provider recorded'});
+
+    var k=d.kpi, c3=med('C3'), d6=med('D6'), inc=med('B9'), fee=med('FEE_PCT');
+    var tile=function(lab,val,note){ return '<div class="st"><div class="lab">'+lab+'</div><div class="val">'+val+'</div><div class="note">'+note+'</div></div>'; };
+    $('money').innerHTML=
+      tile('Sent money in 12 months',pc(k.sent12.p),'of '+k.sent12.n+' respondents')+
+      tile('Median sent in 12 months',money(c3.v),c3.n+' answers')+
+      tile('Median last transaction',money(d6.v),d6.n+' answers')+
+      tile('Median income last month',money(inc.v),inc.n+' answers')+
+      tile('Used a formal channel',pc(k.formal.p),'of '+k.formal.n+' senders')+
+      tile('Used hundi',pc(k.hundi.p),'of '+k.hundi.n+' senders')+
+      tile('Cash carried or sent by hand',pc(k.carry.p),'of '+k.carry.n+' senders')+
+      tile('Median sender fee',pc(fee.v),'of amount sent · '+fee.n+' answers')+
+      tile('Aware of 2.5% incentive',pc(k.aware.p),'of '+k.aware.n+' respondents');
+
+    var chn=d.channels, idx=chn.map(function(c,i){return i;}), ci=cidx(), total=0;
+    var amt=DATA.channel_amounts.map(function(rows){ var a=rows.filter(function(r){return ci<0||r[2]===ci;}).map(function(r){return toShow(r[0],r[1]);}); var s=a.reduce(function(p,c){return p+c;},0); total+=s; return {a:a,s:s}; });
+    formBars('c-chan',idx,chn.map(function(c,i){return mode3D?(CH3[i]||c.label):wrapLabel(c.label,16);}),function(i){return chn[i];},{stack:true,interval:0,barMax:34,g3:{boxWidth:240,boxDepth:40,alpha:20,beta:14,distance:170,interval:0}});
+    $('th-med').textContent='Median amount ('+state.cur+')';
+    $('t-chan').tBodies[0].innerHTML=chn.map(function(c,i){ var p=c.base?c.used/c.base*100:null, a=amt[i]||{a:[],s:0}, ok=a.a.length>=DATA.min_n;
+      return '<tr><td>'+esc(c.label)+'</td><td class="num">'+pc(p)+'</td><td class="num">'+c.used+'</td><td class="num">'+(c.times===null?'–':c.times)+'</td><td class="num">'+(ok?money(median(a.a)):'–')+'</td><td class="num">'+((ok||a.s===0)&&total?pc(a.s/total*100):'–')+'</td></tr>'; }).join('');
+
+    var tr=d.trust.slice().reverse(), chTr=mk('c-trust',true);
+    if(!tr.some(function(r){return r.n;})) none(chTr,'No answers yet');
+    else chTr.setOption({tooltip:Object.assign({trigger:'axis',axisPointer:{type:'shadow'},formatter:function(ps){ var r=tr[ps[0].dataIndex]; return '<b>'+esc(r.label)+'</b> (n = '+r.n+')<br>'+DATA.trust_labels.map(function(l){ var v=r.c[l[0]]||0; return '<span style="color:'+(l[0]==='98'?MUTED:TRUST[l[0]])+'">■</span> '+esc(l[1])+': '+v+' ('+(r.n?Math.round(v/r.n*100):0)+'%)'; }).join('<br>'); }},TT),
+      legend:{top:0,textStyle:{color:MUTED,fontSize:11},itemWidth:12,itemHeight:10,data:DATA.trust_labels.map(function(l){return l[0]==='98'?'Do not know enough':l[1];})},
+      grid:{left:8,right:16,top:34,bottom:8,containLabel:true},
+      yAxis:axis2D({type:'category',data:tr.map(function(r){return wrapLabel(r.label,$('c-trust').clientWidth<560?18:34);}),splitLine:{show:false},axisLabel:{color:INK,fontSize:12,lineHeight:15}}),
+      xAxis:axis2D({type:'value',max:100,axisLabel:{color:MUTED,formatter:'{value}%'}}),
+      series:DATA.trust_labels.map(function(l){ return {name:l[0]==='98'?'Do not know enough':l[1],type:'bar',stack:'t',barMaxWidth:22,itemStyle:{color:TRUST[l[0]]||'#2A4A3D',borderColor:'#0D221A',borderWidth:1},
+        data:tr.map(function(r){return r.n?+((r.c[l[0]]||0)/r.n*100).toFixed(1):0;})}; })});
+
+    var places=Object.keys(d.place);
+    formBars('c-area',places,places.map(function(n){return wrapLabel(n,18);}),function(k){return d.place[k];},{interval:0,barMax:30,g3:{boxWidth:150,boxDepth:44,distance:175,beta:22,interval:0}});
+
+    drawCompare(); drawStatsList(); drawAnswersList(); drawTrend(d);
+
+    var row=function(e,full){ return '<tr><td>'+esc(e.name)+'</td><td class="num">'+e.interviews+'</td><td class="num">'+(e.today||'')+'</td>'+(full?'<td class="num">'+(e.partial||'')+'</td><td class="num">'+(e.flags?'<span class="pill warn">'+e.flags+'</span>':'')+'</td>':'')+'<td>'+(e.last?esc(fmtDay(e.last)):'–')+'</td></tr>'; };
+    $('t-enum').tBodies[0].innerHTML=d.enumerators.map(function(e){return row(e,true);}).join('')||'<tr><td colspan="6" class="empty">No interviews yet.</td></tr>';
+    $('t-sup').tBodies[0].innerHTML=d.supervisors.map(function(e){return row(e,false);}).join('')||'<tr><td colspan="4" class="empty">No interviews yet.</td></tr>';
+    $('t-rate').tBodies[0].innerHTML=d.rates.map(function(r){ return '<tr><td>'+r.cur+'</td><td class="num">'+(r.imp===null?'–':r.imp)+' <small style="color:var(--faint)">n '+r.imp_n+'</small></td><td class="num">'+(r.hun===null?'–':r.hun)+' <small style="color:var(--faint)">n '+r.hun_n+'</small></td></tr>'; }).join('')||'<tr><td colspan="3" class="empty">No answers yet.</td></tr>';
+    $('t-iss').tBodies[0].innerHTML=d.issues.map(function(i){
+      return '<tr><td><span class="pill bad">'+esc(i.issue)+'</span></td><td style="font-family:var(--mono)">'+esc(i.id)+'</td><td>'+esc(i.enumerator)+'</td><td>'+FN[i.form]+'</td><td>'+(i.d?fmtDay(i.d):'–')+'</td></tr>';
+    }).join('')+(DATA.unlabelled||[]).map(function(u){ return '<tr><td><span class="pill warn">Answer code not in dictionary</span></td><td style="font-family:var(--mono)">'+esc(u.id)+'</td><td colspan="3">'+esc(u.label)+' · '+u.n+' interviews</td></tr>'; }).join('')+
+      (DATA.untranslated?'<tr><td><span class="pill warn">Typed answer still in Bangla</span></td><td></td><td colspan="3">'+DATA.untranslated+' spelling(s) have no English version yet. They are listed in the update log.</td></tr>':'')||'<tr><td colspan="5"><span class="pill ok">No problems found</span></td></tr>';
+    $('foot').textContent=(custom()?'':(DATA.rates_note?DATA.rates_note+' ':''))+'Medians and statistics need at least '+DATA.min_n+' answers. Map: Apache ECharts world map.';
+  }
+
+  /* ---------- quantitative: descriptive statistics ---------- */
+  var statCharts=[], curVar=null, curUnit='';
+  function tk(v){ if(v===null||v===undefined||isNaN(v)) return '–'; if(curUnit==='money') return money(v); return num(v,v===Math.round(v)?0:2)+(curUnit==='%'?'%':''); }
+  function short(v){ var a=Math.abs(v); if(state.cur==='BDT'&&curUnit==='money'){ if(a>=1e7) return +(v/1e7).toFixed(1)+' Cr'; if(a>=1e5) return +(v/1e5).toFixed(1)+' L'; } else if(a>=1e6) return +(v/1e6).toFixed(1)+'M'; if(a>=1e3) return +(v/1e3).toFixed(1)+'K'; return +(+v).toFixed(a<10?2:1)+''; }
+  function drawStatsList(){
+    var S=DATA.numbers, keys=Object.keys(S), sel=$('svar');
+    if(!curVar||!S[curVar]) curVar=S.C3?'C3':keys[0];
+    var groups={}, order=[]; keys.forEach(function(k){ var g=S[k].group; if(!groups[g]){groups[g]=[];order.push(g);} groups[g].push(k); });
+    sel.innerHTML=order.map(function(g){ return '<optgroup label="'+esc(g)+'">'+groups[g].map(function(k){ return '<option value="'+k+'">'+esc(S[k].question)+' · '+esc(S[k].label)+'</option>'; }).join('')+'</optgroup>'; }).join('');
+    sel.value=curVar; drawStat();
+  }
+  function drawStat(){
+    statCharts.forEach(function(c){c.dispose();}); statCharts=[];
+    var N=DATA.numbers[curVar]; if(!N) return;
+    curUnit=N.unit; var s=describe(values(curVar,range.s),N.unit!=='money'&&N.unit!=='%');
+    $('s-n').textContent=s.n; $('s-olist').innerHTML=''; $('t-grp').tBodies[0].innerHTML='';
+    if(!s.n||s.few){ ['s-mean','s-med','s-mode','s-sd','s-rng','s-oc'].forEach(function(i){$(i).textContent='–';}); $('s-pill').textContent=s.n?'Too few answers':'–'; $('s-pill').style.color='';
+      ['c-hist','c-box'].forEach(function(id){ var c=echarts.init($(id)); statCharts.push(c); none(c,s.n?'Shown once there are '+DATA.min_n+' answers':'No answers for this selection'); }); return; }
+    $('s-mean').textContent=tk(s.mean); $('s-med').textContent=tk(s.median);
+    $('s-mode').textContent=s.mode.length?s.mode.map(tk).join(', '):'No repeat';
+    $('s-sd').textContent=tk(s.sd); $('s-rng').textContent=short(s.min)+' – '+short(s.max);
+    $('s-pill').textContent=s.normal==='Too few answers to judge'?'Too few':s.normal;
+    $('s-pill').style.color=s.normal==='Close to normal'?'var(--ok)':s.normal==='Not normal'?'var(--bad)':'var(--warn)';
+    $('s-pill').title=s.jb_p===null?'':('Jarque-Bera p = '+s.jb_p.toPrecision(3)+', skewness '+s.skew.toFixed(2));
+    $('s-oc').textContent=s.outlier_n;
+    var h=s.hist, labs=[];
+    for(var i=0;i<h.counts.length;i++){ var a=h.edges[i], b=h.edges[i+1]; labs.push((i===h.counts.length-1&&h.over)?short(a)+'+':((b-a===1&&(a+.5)===Math.round(a+.5))?short(a+.5):short(a)+'–'+short(b))); }
+    var ch=echarts.init($('c-hist')); statCharts.push(ch);
+    ch.setOption({tooltip:Object.assign({trigger:'axis',axisPointer:{type:'shadow'},valueFormatter:function(v){return (+v).toFixed(v%1?1:0);}},TT),grid:{left:8,right:12,top:14,bottom:8,containLabel:true},
+      xAxis:axis2D({type:'category',data:labs,splitLine:{show:false},axisLabel:{color:MUTED,fontSize:10,interval:0,rotate:labs.length>7?35:0}}),
+      yAxis:axis2D({type:'value',minInterval:1,name:'answers',nameTextStyle:{color:MUTED,fontSize:10}}),
+      series:[{name:'Answers',type:'bar',barCategoryGap:'6%',data:h.counts,itemStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'#6FE3CE'},{offset:1,color:'#1F8C7B'}]),borderRadius:[4,4,0,0]}},
+              {name:'Normal curve',type:'line',smooth:true,symbol:'none',data:h.normal,lineStyle:{color:BEN,width:2.5,type:'dashed'},z:5}]});
+    var cb=echarts.init($('c-box')); statCharts.push(cb);
+    var ol=s.outliers;
+    cb.setOption({tooltip:Object.assign({trigger:'item',formatter:function(p){
+        if(p.seriesName==='box'){ return 'Lowest (not outlier): '+tk(s.whisker_low)+'<br>Q1: '+tk(s.q1)+'<br>Median: '+tk(s.median)+'<br>Q3: '+tk(s.q3)+'<br>Highest (not outlier): '+tk(s.whisker_high); }
+        if(p.seriesName==='mean') return 'Mean: '+tk(s.mean);
+        return 'Outlier: '+tk(ol[p.dataIndex].value)+(ol[p.dataIndex].id?'<br>ID code '+esc(ol[p.dataIndex].id):''); }},TT),
+      grid:{left:12,right:18,top:14,bottom:10,containLabel:true},
+      yAxis:{type:'category',data:[''],axisLine:{show:false},axisTick:{show:false}},
+      xAxis:axis2D({type:(s.max>s.q3*40&&s.min>0)?'log':'value',scale:true,axisLabel:{color:MUTED,formatter:short}}),
+      series:[{name:'box',type:'boxplot',data:[[s.whisker_low,s.q1,s.median,s.q3,s.whisker_high]],boxWidth:[28,44],
+                itemStyle:{color:'rgba(79,214,190,.18)',borderColor:NON,borderWidth:1.5},emphasis:{itemStyle:{borderColor:'#fff'}}},
+              {name:'mean',type:'scatter',data:[[s.mean,0]],symbol:'diamond',symbolSize:12,itemStyle:{color:BEN},z:6},
+              {name:'outliers',type:'scatter',data:ol.map(function(o){return [o.value,0];}),symbolSize:function(v,p){return ol[p.dataIndex].extreme?11:8;},itemStyle:{color:'#FF8A6B',borderColor:'#06120E',borderWidth:1},z:7}]});
+    $('s-olist').innerHTML=ol.filter(function(o){return o.id;}).map(function(o){ return '<span class="'+(o.extreme?'x':'')+'" title="'+esc(tk(o.value))+'">'+esc(o.id)+'</span>'; }).join('')+(s.outlier_n>ol.length?'<span style="background:none;color:var(--muted)">+'+(s.outlier_n-ol.length)+' more</span>':'');
+    var bg=s.by_group;
+    $('t-grp').tBodies[0].innerHTML=F.filter(function(g){return bg[g]&&bg[g].n;}).map(function(g){ var x=bg[g];
+      return '<tr><td><span class="pill" style="background:'+(g==='bn'?'rgba(233,185,73,.15)':'rgba(79,214,190,.15)')+';color:'+FC[g]+'">'+FN[g]+'</span></td><td class="num">'+x.n+'</td><td class="num">'+tk(x.mean)+'</td><td class="num">'+tk(x.median)+'</td></tr>'; }).join('')||'<tr><td colspan="4" class="empty">No answers yet.</td></tr>';
+  }
+  $('svar').addEventListener('change',function(){ curVar=this.value; if(DATA) drawStat(); });
+  function bindDates(a,b,all,key,fn){
+    var go=function(){ range[key]=readRange(a,b); if(DATA) fn(); };
+    $(a).addEventListener('change',go); $(b).addEventListener('change',go);
+    $(all).addEventListener('click',function(){ $(a).value=''; $(b).value=''; go(); });
+  }
+  bindDates('sd1','sd2','sdall','s',function(){ drawStat(); });
+  bindDates('qd1','qd2','qdall','q',function(){ drawAnswer(); });
+
+  /* ---------- progress line chart ---------- */
+  var period='day', trendChart=null;
+  function weekStart(d){ var x=new Date(d+'T00:00:00Z'); var back=(x.getUTCDay()+1)%7; x.setUTCDate(x.getUTCDate()-back); return x.toISOString().slice(0,10); } /* weeks start Saturday */
+  function drawTrend(d){
+    if(trendChart){ trendChart.dispose(); }
+    trendChart=echarts.init($('c-trend'));
+    var tg=d.timeline_form||{}, days=Object.keys(d.timeline||{}).sort(), buckets={}, order=[];
+    if(!days.length){ none(trendChart); return; }
+    days.forEach(function(day){
+      var k=period==='day'?day:period==='week'?weekStart(day):day.slice(0,7);
+      if(!buckets[k]){ buckets[k]={b:0,n:0,t:0}; order.push(k); }
+      var g=tg[day]||{}; buckets[k].b+=g.bn||0; buckets[k].n+=g.en||0; buckets[k].t+=(d.timeline[day]||0);
+    });
+    var labels=order.map(function(k){ if(period==='month'){ return M[+k.slice(5,7)-1]+' '+k.slice(0,4); } var s=fmtDay(k); return period==='week'?'Week of '+s:s; });
+    var line=function(name,key,color,w,area){ return {name:name,type:'line',smooth:.25,symbol:'circle',symbolSize:order.length<=3?12:(order.length>40?0:6),showSymbol:order.length<=40,
+      data:order.map(function(k){return buckets[k][key];}),lineStyle:{color:color,width:w},itemStyle:{color:color},
+      areaStyle:area?{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(238,246,240,.16)'},{offset:1,color:'rgba(238,246,240,0)'}])}:undefined,
+      label:{show:period!=='day'&&key==='t',position:'top',color:INK,fontSize:11}}; };
+    trendChart.setOption({tooltip:Object.assign({trigger:'axis'},TT),grid:{left:8,right:16,top:22,bottom:8,containLabel:true},
+      xAxis:axis2D({type:'category',boundaryGap:order.length===1,data:labels,splitLine:{show:false}}),
+      yAxis:axis2D({type:'value',minInterval:1}),
+      series:[line('Total','t','#EEF6F0',2.5,true),line('Bangla','b',BEN,2,false),line('English','n',NON,2,false)]});
+  }
+  [].forEach.call(document.querySelectorAll('.per'),function(b){ b.addEventListener('click',function(){
+    period=b.getAttribute('data-p'); [].forEach.call(document.querySelectorAll('.per'),function(x){ x.setAttribute('aria-pressed',x===b); });
+    if(DATA) drawTrend(view()); }); });
+
+  /* ---------- qualitative: answers by question ---------- */
+  var ansChart=null, curQ=null;
+  function drawAnswersList(){
+    var A=DATA.answers, keys=Object.keys(A), sel=$('qvar');
+    if(!curQ||!A[curQ]) curQ=A.D1?'D1':keys[0];
+    var groups={}, order=[]; keys.forEach(function(k){ var g=A[k].group; if(!groups[g]){ groups[g]=[]; order.push(g); } groups[g].push(k); });
+    sel.innerHTML=order.map(function(g){ return '<optgroup label="'+esc(g)+'">'+groups[g].map(function(k){ var l=A[k].label; if(l.length>70) l=l.slice(0,68)+'…'; return '<option value="'+k+'">'+esc(A[k].question)+' · '+esc(l)+'</option>'; }).join('')+'</optgroup>'; }).join('');
+    sel.value=curQ; drawAnswer();
+  }
+  function drawAnswer(){
+    if(ansChart){ ansChart.dispose(); ansChart=null; }
+    var A=DATA.answers[curQ]; if(!A) return;
+    var q=tally(curQ,range.q);
+    $('q-text').textContent=A.question+'. '+A.label;
+    $('q-n').textContent=q.n; $('q-type').textContent=A.multi?'Multiple answers':'One answer';
+    var opts=q.options.slice(), top=null; opts.forEach(function(o){ if(o.count>0 && (!top||o.count>top.count)) top=o; });
+    $('q-top').textContent=top?(top.label.length>40?top.label.slice(0,38)+'…':top.label)+' ('+Math.round(top.count/Math.max(1,q.n)*100)+'%)':'–';
+    var el=$('c-ans'); el.style.height=Math.max(180,opts.length*46+40)+'px';
+    ansChart=echarts.init(el);
+    if(!q.n){ none(ansChart,'No answers for this selection'); return; }
+    var rev=opts.slice().reverse(), narrow=el.clientWidth<560;
+    ansChart.setOption({
+      tooltip:Object.assign({trigger:'axis',axisPointer:{type:'shadow'},formatter:function(ps){ var o=rev[ps[0].dataIndex];
+        return '<b>'+esc(o.label)+'</b><br>Total: '+o.count+' ('+Math.round(o.count/q.n*100)+'% of '+q.n+')<br><span style="color:'+BEN+'">Bangla: '+o.bn+(q.nf.bn?' ('+Math.round(o.bn/q.nf.bn*100)+'%)':'')+'</span><br><span style="color:'+NON+'">English: '+o.en+(q.nf.en?' ('+Math.round(o.en/q.nf.en*100)+'%)':'')+'</span>'; }},TT),
+      grid:{left:8,right:80,top:8,bottom:8,containLabel:true},
+      yAxis:axis2D({type:'category',data:rev.map(function(o){return wrapLabel(o.label,narrow?22:44);}),splitLine:{show:false},axisLabel:{color:INK,fontSize:12,lineHeight:15}}),
+      xAxis:axis2D({type:'value',minInterval:1}),
+      series:[{name:'Bangla',type:'bar',stack:'g',barMaxWidth:22,itemStyle:{color:BEN},data:rev.map(function(o){return o.bn;})},
+              {name:'English',type:'bar',stack:'g',barMaxWidth:22,itemStyle:{color:NON,borderRadius:[0,4,4,0]},data:rev.map(function(o){return o.en;}),
+               label:{show:true,position:'right',color:MUTED,fontSize:12,formatter:function(p){ var o=rev[p.dataIndex]; return o.count+'  ('+Math.round(o.count/q.n*100)+'%)'; }}}]});
+  }
+  $('qvar').addEventListener('change',function(){ curQ=this.value; if(DATA) drawAnswer(); });
+
+  /* ---------- controls ---------- */
+  function setCountry(c){ state.country=c; draw(); }
+  $('chips').addEventListener('click',function(e){ var b=e.target.closest('.chip'); if(b) setCountry(b.getAttribute('data-c')); });
+  [].forEach.call(document.querySelectorAll('.cur'),function(b){ b.addEventListener('click',function(){
+    state.cur=b.getAttribute('data-c'); try{ localStorage.setItem('rs-cur',state.cur); }catch(e){} if(DATA) draw(); }); });
+  function setMode(is3d){
+    mode3D=is3d&&has3D; $('b3d').setAttribute('aria-pressed',mode3D); $('b2d').setAttribute('aria-pressed',!mode3D);
+    try{ localStorage.setItem('rs-mode',mode3D?'3d':'2d'); }catch(e){}
+    if(DATA) draw();
+  }
+  $('b3d').addEventListener('click',function(){ setMode(true); });
+  $('b2d').addEventListener('click',function(){ setMode(false); });
+  try{ var saved=localStorage.getItem('rs-mode'); if(saved) mode3D=(saved==='3d')&&has3D; if(localStorage.getItem('rs-cur')==='BDT') state.cur='BDT'; }catch(e){}
+  if(!has3D){ $('b3d').disabled=true; $('b3d').title='3D needs WebGL, which this browser has turned off'; }
+  $('b3d').setAttribute('aria-pressed',mode3D); $('b2d').setAttribute('aria-pressed',!mode3D);
+
+  var lastUpdated=null;
+  function accept(d){
+    $('error').hidden=true;
+    if(d.updated===lastUpdated) return;
+    lastUpdated=d.updated; DATA=d;
+    R=JSON.parse(JSON.stringify(d.rates_per_usd));
+    try{ var mine=JSON.parse(localStorage.getItem('rs-rates')||'null'); if(mine) Object.keys(R).forEach(function(k){ if(mine[k]>0) R[k]=mine[k]; }); R.USD=1; }catch(e){}
+    $('chips').innerHTML='<button type="button" class="chip all" data-c="all">All countries</button>'+d.countries.map(function(c){ return '<button type="button" class="chip" data-c="'+c[0]+'"><span class="flag '+((FL[c[1]]||{}).css||'')+'"></span>'+esc(c[1])+'</button>'; }).join('');
+    ['sd1','sd2','qd1','qd2'].forEach(function(id){ if(d.days.length){ $(id).min=d.days[0]; $(id).max=d.days[d.days.length-1]; } });
+    range.s=readRange('sd1','sd2'); range.q=readRange('qd1','qd2');
+    if(!d.views[state.country]) state.country='all';
+    draw();
+  }
+  function load(){
+    if(window.__DATA__){ $('checked').textContent=window.__DATA__.updated.slice(11); accept(window.__DATA__); return; }
+    fetch('status.json?t='+Date.now()).then(function(r){return r.ok?r.json():null;}).then(function(s){ if(s&&s.checked) $('checked').textContent=s.checked.slice(11)+(s.checked.slice(0,10)!==new Date(Date.now()+6*36e5).toISOString().slice(0,10)?' ('+s.checked.slice(5,10)+')':''); }).catch(function(){});
+    fetch('data.json?t='+Date.now()).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();}).then(accept)
+      .catch(function(){ $('error').textContent='Could not load the data file. If this is a new site, run the GitHub Action once (Actions → Update dashboard → Run workflow).'; $('error').hidden=false; });
+  }
+  var rt; window.addEventListener('resize',function(){ clearTimeout(rt); rt=setTimeout(function(){ if(DATA) drawMap(); charts.forEach(function(c){c.resize();}); statCharts.forEach(function(c){c.resize();}); if(trendChart) trendChart.resize(); if(ansChart) ansChart.resize(); },150); });
+  load(); if(!window.__DATA__) setInterval(load,5*60*1000);
+};
+</script>
+</body>
+</html>
