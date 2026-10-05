@@ -117,6 +117,10 @@ header .sub{margin:2px 0 0;color:var(--muted);font-size:.9rem}
 .kpi.main .val{color:var(--gold2)}
 .kpi .split{display:flex;flex-wrap:wrap;gap:0 6px;align-items:baseline;font:500 1.35rem var(--mono);line-height:1.5}
 .kpi .split small{font:600 .72rem var(--sans);color:var(--muted)}
+.kpi .sync{display:grid;gap:2px;margin-top:5px;font:500 .98rem var(--mono);font-variant-numeric:tabular-nums;line-height:1.45}
+.kpi .sync i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:8px}
+.kpi .sync b{font-weight:500}
+.kpi .sync .old{color:var(--warn)}
 
 .card{background:linear-gradient(180deg,rgba(13,34,26,.78),rgba(11,30,23,.84));border:1px solid var(--line);border-radius:16px;padding:16px 18px;min-width:0}
 .card h2{margin:0 0 8px;font:700 1.02rem var(--display);letter-spacing:-.005em}
@@ -226,6 +230,7 @@ footer{color:var(--faint);font-size:.8rem}
     <div class="kpi"><div class="lab">Last 7 days</div><div class="val" id="k-7">–</div></div>
     <div class="kpi"><div class="lab">Questionnaire</div><div class="split"><span style="color:var(--ben)" id="k-bn">–</span><small>Bangla</small><span style="color:var(--non)" id="k-en">–</span><small>English</small></div></div>
     <div class="kpi"><div class="lab">Refused</div><div class="val" id="k-ref">–</div></div>
+    <div class="kpi"><div class="lab">Last sync</div><div class="sync"><span><i style="background:var(--ben)"></i><b id="k-sbn">–</b></span><span><i style="background:var(--non)"></i><b id="k-sen">–</b></span></div></div>
   </section>
 
   <section class="card">
@@ -790,6 +795,10 @@ window.startDashboard=function(){
     charts.forEach(function(c){c.dispose();}); charts=[];
     var d=view(), t=d.totals;
     $('updated').textContent=DATA.updated;
+    (DATA.forms||[]).forEach(function(f){ var el=$('k-s'+f.id); if(!el) return; var v=f.last_sync;
+      if(!v){ el.textContent='–'; el.className=''; el.removeAttribute('title'); return; }
+      var hrs=(Date.now()-new Date(v.replace(' ','T')+':00+06:00').getTime())/36e5;
+      el.textContent=fmtDay(v.slice(0,10))+', '+v.slice(11); el.className=hrs>24?'old':''; el.title=f.label+': last tablet sync '+v+' (Dhaka time)'; });
     $('k-tot').textContent=t.received; $('k-today').textContent=t.today; $('k-7').textContent=t.last7;
     $('k-ref').textContent=t.refused; $('k-pbn').textContent=(d.form_partial||{}).bn||0; $('k-pen').textContent=(d.form_partial||{}).en||0;
     $('k-bn').textContent=(d.form_total||d.form).bn||0; $('k-en').textContent=(d.form_total||d.form).en||0;
