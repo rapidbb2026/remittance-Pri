@@ -478,7 +478,7 @@ def view(sub, cfg, D, forms, today):
                 if c["date"]:
                     d = c["date"].isoformat()
                     row["last"] = max(row["last"] or d, d)
-            elif c["status"] == "partial":
+            if c["partial"]:
                 row["partial"] += 1
             row["flags"] += 1 if c["flags"] else 0
         return [{"name": k, **v} for k, v in sorted(rows.items(), key=lambda x: -x[1]["interviews"])]
@@ -539,9 +539,11 @@ def view(sub, cfg, D, forms, today):
                    "today": sum(1 for c in res if c["date"] == today),
                    "last7": sum(1 for c in res if c["date"] and week_ago <= c["date"] <= today),
                    "refused": sum(1 for c in sub if c["status"] == "refused"),
-                   "partial": sum(1 for c in sub if c["status"] == "partial"),
+                   "partial": sum(1 for c in sub if c["partial"]),          # same meaning as CSPro: any partly saved case
                    "reopened": sum(1 for c in sub if c["status"] == "reopened")},
         "form": {f: sum(1 for c in res if c["src"] == f) for f in forms},
+        "form_total": {f: sum(1 for c in sub if c["src"] == f) for f in forms},
+        "form_partial": {f: sum(1 for c in sub if c["src"] == f and c["partial"]) for f in forms},
         "country": dict(c_tot), "country_form": {k: v for k, v in c_by.items()},
         "timeline": {d: d_tot[d] for d in days}, "timeline_form": {d: d_by[d] for d in days},
         "city": text_top([v.get("CITY") for v in V], aliases) if "CITY" in open_ok else [],
@@ -668,6 +670,9 @@ def main():
         "numbers": number_rows(res, cfg, forms, day_of, country_of, len(countries)),
         "answers": ans,
         "channel_amounts": channel_rows(res, forms, country_of),
+        # sent and received for the same transaction, only where the respondent knew both
+        "last_pairs": [[c["vals"]["D6_AMOUNT"], CUR_IDX[c["vals"]["D6_CURRENCY"]], c["vals"]["D7_AMOUNT_BDT"], country_of(c)] for c in res
+                       if c["vals"].get("D6_AMOUNT") and c["vals"].get("D6_CURRENCY") in CUR_IDX and c["vals"].get("D7_AMOUNT_BDT") and c["vals"].get("D7_DK") == 1],
         "jobs": [lab for _, lab in D["B5"]["values"]],
         "income_by_job": [[c["vals"]["B9_01"], CUR_IDX[c["vals"]["B9_02"]], country_of(c), job_idx[c["vals"]["B5"]]] for c in res
                           if c["vals"].get("B9_01") is not None and c["vals"].get("B9_02") in CUR_IDX and c["vals"].get("B5") in job_idx],
