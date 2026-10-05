@@ -580,6 +580,16 @@ def compare_dictionaries(dicts):
                 log(f"  NOTE {name}: answer codes differ ({ids[0]} only: {sorted(a - b)}, {other} only: {sorted(b - a)})")
 
 
+def last_sync(data_dir, sid):
+    """When a tablet last sent data for this questionnaire (newest sync file in Dropbox), Dhaka time."""
+    try:
+        times = json.load(open(os.path.join(data_dir, sid, "manifest.json"))).values()
+        newest = max(dt.datetime.fromisoformat(t.replace("Z", "+00:00")) for t in times)
+        return newest.astimezone(DHAKA).strftime("%Y-%m-%d %H:%M")
+    except Exception:
+        return None
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--data-dir", default=os.path.join(ROOT, "data"))
@@ -626,7 +636,8 @@ def main():
         kept, deleted = harmonise(raw, src["id"], (dicts.get(src["id"]) or labels)["items"], cfg.get("recodes", {}))
         log(f"[{src['id']}] interviews: {len(kept)} (+{deleted} deleted, ignored)")
         cases += kept
-        src_meta.append({"id": src["id"], "label": src["label"], "cases": len(kept), "deleted": deleted})
+        src_meta.append({"id": src["id"], "label": src["label"], "cases": len(kept), "deleted": deleted,
+                         "last_sync": last_sync(args.data_dir, src["id"])})
     derive(cases, cfg, now.date())
 
     forms = [s["id"] for s in cfg["sources"]]
