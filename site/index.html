@@ -63,7 +63,17 @@ button,input,select{font:inherit;color:inherit}
 
 /* ---------- page ---------- */
 #app{padding-inline:16px;padding-block:20px 56px}
-.wrap{max-width:1260px;margin:0 auto;display:grid;gap:16px}
+.wrap{max-width:1260px;margin:0 auto;display:grid;gap:16px;position:relative;z-index:1}
+/* slow drifting light behind the page */
+.aura{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none}
+.aura i{position:absolute;border-radius:50%;filter:blur(90px);opacity:.75;will-change:transform}
+.aura i:nth-child(1){width:56vmax;height:56vmax;left:-18vmax;top:-22vmax;background:radial-gradient(circle,rgba(38,150,104,.55),transparent 65%);animation:drift1 70s ease-in-out infinite alternate}
+.aura i:nth-child(2){width:48vmax;height:48vmax;right:-16vmax;top:18vh;background:radial-gradient(circle,rgba(233,185,73,.26),transparent 65%);animation:drift2 90s ease-in-out infinite alternate}
+.aura i:nth-child(3){width:52vmax;height:52vmax;left:22vw;bottom:-30vmax;background:radial-gradient(circle,rgba(40,170,160,.34),transparent 65%);animation:drift3 110s ease-in-out infinite alternate}
+@keyframes drift1{to{transform:translate(16vw,12vh) scale(1.15)}}
+@keyframes drift2{to{transform:translate(-18vw,-10vh) scale(.9)}}
+@keyframes drift3{to{transform:translate(-12vw,-16vh) scale(1.1)}}
+@media (prefers-reduced-motion:reduce){.aura i{animation:none}}
 header{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;justify-content:space-between}
 header .eyebrow{font:700 .72rem var(--sans);letter-spacing:.16em;text-transform:uppercase;color:var(--gold)}
 header h1{margin:2px 0 0;font:800 clamp(1.4rem,3.1vw,2rem) var(--display);letter-spacing:-.02em;text-wrap:balance}
@@ -99,7 +109,7 @@ header .sub{margin:2px 0 0;color:var(--muted);font-size:.9rem}
 .keys i,.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
 
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
-.kpi{background:linear-gradient(180deg,var(--card),#0B1E17);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.kpi{background:linear-gradient(180deg,rgba(13,34,26,.78),rgba(11,30,23,.84));border:1px solid var(--line);border-radius:14px;padding:12px 14px}
 .kpi .lab,.st .lab{font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700}
 .kpi .val{font:500 1.9rem var(--mono);font-variant-numeric:tabular-nums;line-height:1.25}
 .kpi.main{background:radial-gradient(120% 140% at 0% 0%,#1E6B4B 0%,#0F3A2A 55%,#0B2A1F 100%);border-color:#2F7E5D;position:relative;overflow:hidden}
@@ -108,7 +118,7 @@ header .sub{margin:2px 0 0;color:var(--muted);font-size:.9rem}
 .kpi .split{display:flex;flex-wrap:wrap;gap:0 6px;align-items:baseline;font:500 1.35rem var(--mono);line-height:1.5}
 .kpi .split small{font:600 .72rem var(--sans);color:var(--muted)}
 
-.card{background:linear-gradient(180deg,var(--card),#0B1E17);border:1px solid var(--line);border-radius:16px;padding:16px 18px;min-width:0}
+.card{background:linear-gradient(180deg,rgba(13,34,26,.78),rgba(11,30,23,.84));border:1px solid var(--line);border-radius:16px;padding:16px 18px;min-width:0}
 .card h2{margin:0 0 8px;font:700 1.02rem var(--display);letter-spacing:-.005em}
 .card h2 small{font:600 .7rem var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--gold);display:block;margin-bottom:2px}
 .card .hint{margin:2px 0 8px;color:var(--muted);font-size:.84rem;max-width:80ch}
@@ -188,6 +198,7 @@ footer{color:var(--faint);font-size:.8rem}
 </div>
 
 <div id="app" hidden>
+<div class="aura" aria-hidden="true"><i></i><i></i><i></i></div>
 <div class="wrap">
   <header>
     <div>
@@ -209,13 +220,12 @@ footer{color:var(--faint);font-size:.8rem}
   <div id="error" class="err" hidden></div>
 
   <section class="kpis" aria-label="Key numbers">
-    <div class="kpi main"><div class="lab">Interviews completed</div><div class="val" id="k-int">–</div></div>
+    <div class="kpi main"><div class="lab">Total cases</div><div class="val" id="k-tot">–</div></div>
+    <div class="kpi"><div class="lab">Partial</div><div class="split"><span style="color:var(--ben)" id="k-pbn">–</span><small>Bangla</small><span style="color:var(--non)" id="k-pen">–</span><small>English</small></div></div>
     <div class="kpi"><div class="lab">Today</div><div class="val" id="k-today">–</div></div>
     <div class="kpi"><div class="lab">Last 7 days</div><div class="val" id="k-7">–</div></div>
     <div class="kpi"><div class="lab">Questionnaire</div><div class="split"><span style="color:var(--ben)" id="k-bn">–</span><small>Bangla</small><span style="color:var(--non)" id="k-en">–</span><small>English</small></div></div>
     <div class="kpi"><div class="lab">Refused</div><div class="val" id="k-ref">–</div></div>
-    <div class="kpi"><div class="lab">Partly saved</div><div class="val" id="k-part">–</div></div>
-    <div class="kpi"><div class="lab">Reopened</div><div class="val" id="k-reo">–</div></div>
   </section>
 
   <section class="card">
@@ -265,7 +275,7 @@ footer{color:var(--faint);font-size:.8rem}
   <section class="card">
     <h2>Last transaction by country</h2>
     <div class="chart" id="c-last" style="height:300px"></div>
-    <div class="tbl"><table id="t-last"><thead><tr><th>Country</th><th class="num">Answers</th><th class="num" id="th-last-a">Average sent</th><th class="num" id="th-last-m">Median sent</th><th class="num" id="th-last-r">Average received</th><th class="num">Average fee share</th></tr></thead><tbody></tbody></table></div>
+    <div class="tbl"><table id="t-last"><thead><tr><th>Country</th><th class="num">Answers</th><th class="num" id="th-last-a">Average sent</th><th class="num" id="th-last-m">Median sent</th><th class="num">Knew amount received</th><th class="num" id="th-last-s2">Their average sent</th><th class="num" id="th-last-r">Their average received</th><th class="num">Average fee share</th></tr></thead><tbody></tbody></table></div>
   </section>
 
   <div class="grid2">
@@ -351,13 +361,11 @@ footer{color:var(--faint);font-size:.8rem}
   <div class="grid2">
     <section class="card">
       <h2>Enumerators</h2>
-      <div class="tbl"><table id="t-enum"><thead><tr><th>Enumerator</th><th class="num">Total</th><th class="num">Today</th><th class="num">Partly saved</th><th class="num">To check</th><th>Last interview</th></tr></thead><tbody></tbody></table></div>
+      <div class="tbl"><table id="t-enum"><thead><tr><th>Enumerator</th><th class="num">Total</th><th class="num">Today</th><th class="num">Partial</th><th class="num">To check</th><th>Last interview</th></tr></thead><tbody></tbody></table></div>
     </section>
     <section class="card">
       <h2>Where interviews took place</h2>
       <div class="chart" id="c-area" style="height:280px"></div>
-      <h2 style="margin-top:14px">Supervisors</h2>
-      <div class="tbl"><table id="t-sup"><thead><tr><th>Supervisor</th><th class="num">Total</th><th class="num">Today</th><th>Last interview</th></tr></thead><tbody></tbody></table></div>
     </section>
   </div>
 
@@ -475,7 +483,7 @@ window.startDashboard=function(){
   var $=function(id){return document.getElementById(id);};
   var BEN='#E9B949', NON='#4FD6BE', INK='#EEF6F0', MUTED='#94B1A3', LINE='#1F4234', SPLIT='#143024', ZERO='#12281F', EDGE='#2C5A47';
   var F=['bn','en'], FN={bn:'Bangla',en:'English'}, FC={bn:BEN,en:NON};
-  var TRUST={'1':'#6B4A1E','2':'#A8742A','3':'#E0A93B','4':'#F8E08E','98':'#2A4A3D'};
+  var TRUST={'1':'#6B4A1E','2':'#A8742A','3':'#E0A93B','4':'#F8E08E','98':'#8C9F96'};
   function grad(x,y,x2,y2,stops){ return {type:'linear',x:x,y:y,x2:x2,y2:y2,global:false,colorStops:stops.map(function(s){return {offset:s[0],color:s[1]};})}; }
   /* flags: css = small flag, c = single colour for 3D, g = striped fill for the flat map */
   var FL={
@@ -752,10 +760,12 @@ window.startDashboard=function(){
         if(key==='FEE_PCT'){ var a=toShow(r[5],r[6]); if(!a) return; v=100*toShow(r[0],r[4])/a; } else v=toShow(r[0],r[4]);
         out[r[2]].push(v); }); return out; };
     /* last transaction */
-    var d6=by('D6'), d7=by('D7'), fee=by('FEE_PCT'), last=C.map(function(c,i){ return {name:c[1],s:stat(d6[i]),r:stat(d7[i]),f:stat(fee[i])}; });
+    var d6=by('D6'), fee=by('FEE_PCT'), ps=C.map(function(){return [];}), pr=C.map(function(){return [];});
+    (DATA.last_pairs||[]).forEach(function(r){ if(r[3]<0) return; ps[r[3]].push(toShow(r[0],r[1])); pr[r[3]].push(toShow(r[2],5)); });
+    var last=C.map(function(c,i){ return {name:c[1],s:stat(d6[i]),p:stat(ps[i]),r:stat(pr[i]),f:stat(fee[i])}; });
     moneyBars('c-last',last.map(function(x){return [x.name,x.s.avg];}),BEN);
-    $('th-last-a').textContent='Average sent ('+state.cur+')'; $('th-last-m').textContent='Median sent ('+state.cur+')'; $('th-last-r').textContent='Average received ('+state.cur+')';
-    $('t-last').tBodies[0].innerHTML=last.map(function(x,i){ return '<tr'+onRow(i)+'><td><span class="flag '+((FL[x.name]||{}).css||'')+'" style="vertical-align:-3px;margin-right:8px"></span>'+esc(x.name)+'</td><td class="num">'+x.s.n+'</td><td class="num">'+money(x.s.avg)+'</td><td class="num">'+money(x.s.med)+'</td><td class="num">'+money(x.r.avg)+'</td><td class="num">'+pc(x.f.avg)+'</td></tr>'; }).join('');
+    $('th-last-a').textContent='Average sent ('+state.cur+')'; $('th-last-m').textContent='Median sent ('+state.cur+')'; $('th-last-s2').textContent='Their average sent ('+state.cur+')'; $('th-last-r').textContent='Their average received ('+state.cur+')';
+    $('t-last').tBodies[0].innerHTML=last.map(function(x,i){ return '<tr'+onRow(i)+'><td><span class="flag '+((FL[x.name]||{}).css||'')+'" style="vertical-align:-3px;margin-right:8px"></span>'+esc(x.name)+'</td><td class="num">'+x.s.n+'</td><td class="num">'+money(x.s.avg)+'</td><td class="num">'+money(x.s.med)+'</td><td class="num">'+x.r.n+'</td><td class="num">'+money(x.p.avg)+'</td><td class="num">'+money(x.r.avg)+'</td><td class="num">'+pc(x.f.avg)+'</td></tr>'; }).join('');
     /* income by country */
     var inc=by('B9').map(function(a,i){ return {name:C[i][1],s:stat(a)}; });
     moneyBars('c-inc-c',inc.map(function(x){return [x.name,x.s.avg];}),NON);
@@ -780,9 +790,9 @@ window.startDashboard=function(){
     charts.forEach(function(c){c.dispose();}); charts=[];
     var d=view(), t=d.totals;
     $('updated').textContent=DATA.updated;
-    $('k-int').textContent=t.interviews; $('k-today').textContent=t.today; $('k-7').textContent=t.last7;
-    $('k-ref').textContent=t.refused; $('k-part').textContent=t.partial; $('k-reo').textContent=t.reopened;
-    $('k-bn').textContent=d.form.bn||0; $('k-en').textContent=d.form.en||0;
+    $('k-tot').textContent=t.received; $('k-today').textContent=t.today; $('k-7').textContent=t.last7;
+    $('k-ref').textContent=t.refused; $('k-pbn').textContent=(d.form_partial||{}).bn||0; $('k-pen').textContent=(d.form_partial||{}).en||0;
+    $('k-bn').textContent=(d.form_total||d.form).bn||0; $('k-en').textContent=(d.form_total||d.form).en||0;
     [].forEach.call(document.querySelectorAll('.chip'),function(b){ b.setAttribute('aria-pressed',b.getAttribute('data-c')===state.country); });
     [].forEach.call(document.querySelectorAll('.cur'),function(x){ x.setAttribute('aria-pressed',x.getAttribute('data-c')===state.cur); });
 
@@ -822,7 +832,7 @@ window.startDashboard=function(){
       grid:{left:8,right:16,top:34,bottom:8,containLabel:true},
       yAxis:axis2D({type:'category',data:tr.map(function(r){return wrapLabel(r.label,$('c-trust').clientWidth<560?18:34);}),splitLine:{show:false},axisLabel:{color:INK,fontSize:12,lineHeight:15}}),
       xAxis:axis2D({type:'value',max:100,axisLabel:{color:MUTED,formatter:'{value}%'}}),
-      series:DATA.trust_labels.map(function(l){ return {name:l[0]==='98'?'Do not know enough':l[1],type:'bar',stack:'t',barMaxWidth:22,itemStyle:{color:TRUST[l[0]]||'#2A4A3D',borderColor:'#0D221A',borderWidth:1},
+      series:DATA.trust_labels.map(function(l){ return {name:l[0]==='98'?'Do not know enough':l[1],type:'bar',stack:'t',barMaxWidth:22,itemStyle:{color:TRUST[l[0]]||'#8C9F96',borderColor:'#0D221A',borderWidth:1},
         data:tr.map(function(r){return r.n?+((r.c[l[0]]||0)/r.n*100).toFixed(1):0;})}; })});
 
     var places=Object.keys(d.place);
@@ -832,7 +842,6 @@ window.startDashboard=function(){
 
     var row=function(e,full){ return '<tr><td>'+esc(e.name)+'</td><td class="num">'+e.interviews+'</td><td class="num">'+(e.today||'')+'</td>'+(full?'<td class="num">'+(e.partial||'')+'</td><td class="num">'+(e.flags?'<span class="pill warn">'+e.flags+'</span>':'')+'</td>':'')+'<td>'+(e.last?esc(fmtDay(e.last)):'–')+'</td></tr>'; };
     $('t-enum').tBodies[0].innerHTML=d.enumerators.map(function(e){return row(e,true);}).join('')||'<tr><td colspan="6" class="empty">No interviews yet.</td></tr>';
-    $('t-sup').tBodies[0].innerHTML=d.supervisors.map(function(e){return row(e,false);}).join('')||'<tr><td colspan="4" class="empty">No interviews yet.</td></tr>';
     $('t-rate').tBodies[0].innerHTML=d.rates.map(function(r){ return '<tr><td>'+r.cur+'</td><td class="num">'+(r.imp===null?'–':r.imp)+' <small style="color:var(--faint)">n '+r.imp_n+'</small></td><td class="num">'+(r.hun===null?'–':r.hun)+' <small style="color:var(--faint)">n '+r.hun_n+'</small></td></tr>'; }).join('')||'<tr><td colspan="3" class="empty">No answers yet.</td></tr>';
     $('t-iss').tBodies[0].innerHTML=d.issues.map(function(i){
       return '<tr><td><span class="pill bad">'+esc(i.issue)+'</span></td><td style="font-family:var(--mono)">'+esc(i.id)+'</td><td>'+esc(i.enumerator)+'</td><td>'+FN[i.form]+'</td><td>'+(i.d?fmtDay(i.d):'–')+'</td></tr>';
