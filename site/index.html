@@ -251,6 +251,7 @@ footer{color:var(--faint);font-size:.8rem}
     <div class="kpi"><div class="lab">Today</div><div class="val" id="k-today">–</div></div>
     <div class="kpi"><div class="lab">Last 7 days</div><div class="val" id="k-7">–</div></div>
     <div class="kpi"><div class="lab">Questionnaire</div><div class="split"><span style="color:var(--ben)" id="k-bn">–</span><small>Bangla</small><span style="color:var(--non)" id="k-en">–</span><small>English</small></div></div>
+    <div class="kpi"><div class="lab">Respondents</div><div class="split"><span id="k-male">–</span><small>Male</small><span id="k-female">–</span><small>Female</small></div></div>
     <div class="kpi"><div class="lab">Refused</div><div class="val" id="k-ref">–</div></div>
     <div class="kpi"><div class="lab">Last sync</div><div class="sync"><span><i style="background:var(--ben)"></i><b id="k-sbn">–</b></span><span><i style="background:var(--non)"></i><b id="k-sen">–</b></span></div></div>
   </section>
@@ -280,6 +281,13 @@ footer{color:var(--faint);font-size:.8rem}
     <section class="card"><h2>Country by questionnaire</h2><div class="chart" id="c-div"></div></section>
     <section class="card"><h2>By city</h2><div class="chart" id="c-dist"></div></section>
   </div>
+
+  <section class="card">
+    <h2>Male and female respondents</h2>
+    <div class="legend"><span><i style="background:#5AA9E6"></i>Male</span><span><i style="background:#F08BB4"></i>Female</span><span><i style="background:#8C9F96"></i>Other</span></div>
+    <div class="chart" id="c-sex" style="height:280px"></div>
+    <div class="tbl"><table id="t-sex"><thead><tr><th>Country</th><th class="num">Respondents</th><th class="num">Male</th><th class="num">Female</th><th class="num">Other</th><th class="num">Female share</th></tr></thead><tbody></tbody></table></div>
+  </section>
 
   <section class="card">
     <h2>Remittances at a glance</h2>
@@ -759,23 +767,48 @@ window.startDashboard=function(){
 
   /* ---------- interviews per enumerator per date ---------- */
   function drawMatrix(){
-    var MX=DATA.matrix, days=MX.days, E=DATA.enumerators, today=new Date(Date.now()+6*36e5).toISOString().slice(0,10);
+    var MX=DATA.matrix, days=MX.days, E=DATA.enumerators, C=DATA.countries, today=new Date(Date.now()+6*36e5).toISOString().slice(0,10);
     var nodate=Object.keys(MX.rows).some(function(k){return MX.rows[k][''];});
     var cols=days.concat(nodate?['']:[]), ncol=cols.length+3;
     $('t-mx').tHead.innerHTML='<tr><th>Interviewer</th><th>Code</th>'+cols.map(function(d){ return '<th class="'+(d===today?'today':'')+'">'+(d?fmtDay(d):'No date')+'</th>'; }).join('')+'<th class="tot">Total</th></tr>';
-    var teams=[], seen={}; E.forEach(function(e,i){ if(!seen[e[2]]){ seen[e[2]]=[]; teams.push(e[2]); } seen[e[2]].push(i); });
-    if(MX.rows['-1']){ teams.push('Interviewer not recorded'); seen['Interviewer not recorded']=[-1]; }
+    /* one block per country: its own team first, then anyone else who interviewed there */
+    var order=[]; E.forEach(function(e,i){ var h=MX.home[String(i)]; if(h!==undefined&&h>=0&&order.indexOf(h)<0) order.push(h); });
+    C.forEach(function(c,i){ if(order.indexOf(i)<0) order.push(i); });
+    if(Object.keys(MX.rows).some(function(k){return k.split('|')[0]==='-1';})) order.push(-1);
     var grand=cols.map(function(){return 0;}), gt=0, html='';
     var cell=function(v){ return '<td class="n'+(v?'':' z')+'">'+(v||0)+'</td>'; };
-    teams.forEach(function(t){
+    order.forEach(function(ci){
+      var who=[]; E.forEach(function(e,i){ if(MX.home[String(i)]===ci) who.push(i); });
+      E.forEach(function(e,i){ if(who.indexOf(i)<0&&MX.rows[ci+'|'+i]) who.push(i); });
+      if(MX.rows[ci+'|-1']) who.push(-1);
+      if(!who.length) return;
       var sum=cols.map(function(){return 0;}), st=0, rows='';
-      seen[t].forEach(function(i){ var r=MX.rows[String(i)]||{}, e=i<0?['','Not recorded']:E[i], tot=0;
+      who.forEach(function(i){ var r=MX.rows[ci+'|'+i]||{}, e=i<0?['','Interviewer not recorded','']:E[i], tot=0, guest=i>=0&&MX.home[String(i)]!==ci;
         var tds=cols.map(function(d,j){ var v=r[d]||0; sum[j]+=v; grand[j]+=v; tot+=v; return cell(v); }).join(''); st+=tot; gt+=tot;
-        rows+='<tr class="who'+(i>=0&&state.en===e[0]?' on':'')+'"'+(i>=0?' data-e="'+esc(e[0])+'" tabindex="0"':'')+'><td>'+esc(e[1])+'</td><td class="code">'+esc(e[0])+'</td>'+tds+'<td class="tot">'+tot+'</td></tr>'; });
-      html+='<tr class="team"><td colspan="'+ncol+'">'+esc(t)+'</td></tr>'+rows+'<tr class="sum"><td colspan="2">Total</td>'+sum.map(function(v){return '<td>'+v+'</td>';}).join('')+'<td>'+st+'</td></tr>';
+        rows+='<tr class="who'+(i>=0&&state.en===e[0]?' on':'')+'"'+(i>=0?' data-e="'+esc(e[0])+'" tabindex="0"':'')+'><td>'+esc(e[1])+(guest?' <span class="pill warn">'+esc(e[2])+'</span>':'')+'</td><td class="code">'+esc(e[0])+'</td>'+tds+'<td class="tot">'+tot+'</td></tr>'; });
+      var name=ci<0?'Country not recorded':C[ci][1];
+      html+='<tr class="team"><td colspan="'+ncol+'">'+esc(name)+'</td></tr>'+rows+'<tr class="sum"><td colspan="2">Total '+esc(name)+'</td>'+sum.map(function(v){return '<td>'+v+'</td>';}).join('')+'<td>'+st+'</td></tr>';
     });
-    html+='<tr class="grand"><td colspan="2">All teams</td>'+grand.map(function(v){return '<td>'+v+'</td>';}).join('')+'<td>'+gt+'</td></tr>';
+    html+='<tr class="grand"><td colspan="2">All countries</td>'+grand.map(function(v){return '<td>'+v+'</td>';}).join('')+'<td>'+gt+'</td></tr>';
     $('t-mx').tBodies[0].innerHTML=html;
+  }
+  /* ---------- male and female ---------- */
+  function drawSex(){
+    var A=DATA.answers.A1, C=DATA.countries, ci=cidx(), ei=eidx(), by=C.map(function(){return [0,0,0];}), all=[0,0,0];
+    if(!A) return;
+    A.cells.forEach(function(c){ if(ei!==-1&&c[3]!==ei) return;
+      for(var j=5;j<c.length;j+=2){ var k=Math.min(c[j],2); if(c[1]>=0) by[c[1]][k]+=c[j+1]; if(ci<0||c[1]===ci) all[k]+=c[j+1]; } });
+    $('k-male').textContent=all[0]; $('k-female').textContent=all[1];
+    var SX=['#5AA9E6','#F08BB4','#8C9F96'], SN=['Male','Female','Other'], names=C.map(function(c){return c[1];});
+    var ch=mk('c-sex');
+    if(mode3D){ var cells=[]; names.forEach(function(n,i){ [0,1].forEach(function(k){ cells.push([i,k,by[i][k],SX[k]]); }); });
+      bar3D(ch,names.map(function(n){return wrapLabel(n,14);}),['Male','Female'],cells,{boxWidth:Math.max(130,names.length*30),boxDepth:44,distance:165,beta:24,interval:0}); }
+    else ch.setOption({tooltip:Object.assign({trigger:'axis',axisPointer:{type:'shadow'}},TT),grid:{left:8,right:12,top:12,bottom:8,containLabel:true},
+      xAxis:axis2D({type:'category',data:names.map(function(n){return wrapLabel(n,14);}),splitLine:{show:false},axisLabel:{color:MUTED,interval:0,fontSize:11}}),yAxis:axis2D({type:'value',minInterval:1}),
+      series:[0,1,2].map(function(k){ return {name:SN[k],type:'bar',barMaxWidth:26,itemStyle:{color:SX[k],borderRadius:[4,4,0,0]},data:by.map(function(r){return r[k];})}; })});
+    var row=function(name,r,flag,bold){ var n=r[0]+r[1]+r[2]; return '<tr'+(bold?' style="font-weight:700"':'')+'><td>'+(flag?'<span class="flag '+flag+'" style="vertical-align:-3px;margin-right:8px"></span>':'')+esc(name)+'</td><td class="num">'+n+'</td><td class="num">'+r[0]+'</td><td class="num">'+r[1]+'</td><td class="num">'+r[2]+'</td><td class="num">'+pc(n?r[1]/n*100:null)+'</td></tr>'; };
+    var tot=[0,0,0]; by.forEach(function(r){ tot[0]+=r[0]; tot[1]+=r[1]; tot[2]+=r[2]; });
+    $('t-sex').tBodies[0].innerHTML=C.map(function(c,i){ return row(c[1],by[i],(FL[c[1]]||{}).css); }).join('')+row('All countries',tot,'',true);
   }
   $('t-mx').addEventListener('click',function(e){ var tr=e.target.closest('tr.who'); if(tr&&tr.getAttribute('data-e')) setEnum(state.en===tr.getAttribute('data-e')?'all':tr.getAttribute('data-e')); });
   $('t-mx').addEventListener('keydown',function(e){ if(e.key==='Enter'){ var tr=e.target.closest('tr.who'); if(tr) tr.click(); } });
@@ -902,7 +935,7 @@ window.startDashboard=function(){
     drawCompare(); drawStatsList(); drawAnswersList(); drawTrend(d);
 
     var row=function(e,full){ return '<tr><td>'+esc(e.name)+'</td><td class="num">'+e.interviews+'</td><td class="num">'+(e.today||'')+'</td>'+(full?'<td class="num">'+(e.partial||'')+'</td><td class="num">'+(e.flags?'<span class="pill warn">'+e.flags+'</span>':'')+'</td>':'')+'<td>'+(e.last?esc(fmtDay(e.last)):'–')+'</td></tr>'; };
-    drawMatrix();
+    drawMatrix(); drawSex();
     $('t-rate').tBodies[0].innerHTML=d.rates.map(function(r){ return '<tr><td>'+r.cur+'</td><td class="num">'+(r.imp===null?'–':r.imp)+' <small style="color:var(--faint)">n '+r.imp_n+'</small></td><td class="num">'+(r.hun===null?'–':r.hun)+' <small style="color:var(--faint)">n '+r.hun_n+'</small></td></tr>'; }).join('')||'<tr><td colspan="3" class="empty">No answers yet.</td></tr>';
     $('t-iss').tBodies[0].innerHTML=d.issues.map(function(i){
       return '<tr><td><span class="pill bad">'+esc(i.issue)+'</span></td><td style="font-family:var(--mono)">'+esc(i.id)+'</td><td>'+esc(i.enumerator)+'</td><td>'+FN[i.form]+'</td><td>'+(i.d?fmtDay(i.d):'–')+'</td></tr>';
