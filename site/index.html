@@ -146,6 +146,27 @@ th{text-align:left;font-weight:700;color:var(--muted);font-size:.7rem;text-trans
 td{border-bottom:1px solid rgba(31,66,52,.7);padding:7px 8px 7px 0;vertical-align:middle}
 td.num,th.num{text-align:right}
 td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.filterbar .sel select{min-width:min(220px,100%)}
+.mx{max-height:640px;overflow:auto;border:1px solid var(--line);border-radius:12px}
+#t-mx{font-size:.84rem;border-collapse:separate;border-spacing:0;min-width:max-content}
+#t-mx th,#t-mx td{padding:6px 9px;border-bottom:1px solid rgba(31,66,52,.6);text-align:right;white-space:nowrap}
+#t-mx thead th{position:sticky;top:0;z-index:3;background:#123024;color:var(--ink);font-size:.72rem;letter-spacing:.04em}
+#t-mx th:first-child,#t-mx td:first-child{position:sticky;left:0;z-index:2;text-align:left;background:#0D221A;min-width:210px;border-right:1px solid var(--line)}
+#t-mx thead th:first-child{z-index:4;background:#123024}
+#t-mx td.code{color:var(--faint);font-family:var(--mono)}
+#t-mx td.n{font-family:var(--mono);font-variant-numeric:tabular-nums}
+#t-mx td.z{color:#3F5A4E}
+#t-mx td.tot,#t-mx th.tot{font-weight:700;color:var(--gold2);border-left:1px solid var(--line);font-family:var(--mono)}
+#t-mx tr.team td{background:#143326;color:var(--gold);font-weight:700;text-transform:uppercase;letter-spacing:.07em;font-size:.72rem}
+#t-mx tr.team td:first-child{background:#143326}
+#t-mx tr.sum td{background:#3A2A0A;color:var(--gold2);font-weight:700;font-family:var(--mono)}
+#t-mx tr.sum td:first-child{background:#3A2A0A;text-align:right;font-family:var(--sans)}
+#t-mx tr.grand td{background:#1E6B4B;color:#fff;font-weight:800;font-family:var(--mono)}
+#t-mx tr.grand td:first-child{background:#1E6B4B;text-align:right;font-family:var(--sans)}
+#t-mx tr.who{cursor:pointer}
+#t-mx tr.who:hover td{background:#123024}
+#t-mx tr.who.on td{background:#22402F;box-shadow:inset 0 1px 0 var(--gold),inset 0 -1px 0 var(--gold)}
+#t-mx th.today{color:var(--gold)}
 .pill{display:inline-block;font-size:.74rem;font-weight:700;padding:1px 9px;border-radius:10px;white-space:nowrap}
 .pill.ok{background:rgba(91,227,154,.13);color:var(--ok)}
 .pill.warn{background:rgba(245,196,81,.14);color:var(--warn)}
@@ -217,6 +238,7 @@ footer{color:var(--faint);font-size:.8rem}
 
   <div class="filterbar" aria-label="Filters">
     <div class="sel"><span class="lab">Country</span><div class="chips" id="chips" role="group" aria-label="Country"></div></div>
+    <div class="sel"><label for="fen">Enumerator</label><select id="fen"></select></div>
     <div class="sel"><span class="lab">Amounts in</span><div class="seg" role="group" aria-label="Currency"><button type="button" class="cur" data-c="USD" aria-pressed="true">USD</button><button type="button" class="cur" data-c="BDT" aria-pressed="false">BDT</button></div></div>
     <div class="keys"><span><i style="background:var(--ben)"></i>Bangla questionnaire</span><span><i style="background:var(--non)"></i>English questionnaire</span></div>
   </div>
@@ -363,11 +385,12 @@ footer{color:var(--faint);font-size:.8rem}
     <div class="chart" id="c-ans"></div>
   </section>
 
+  <section class="card">
+    <h2>Interviews per enumerator per date</h2>
+    <div class="tbl mx"><table id="t-mx"><thead></thead><tbody></tbody></table></div>
+  </section>
+
   <div class="grid2">
-    <section class="card">
-      <h2>Enumerators</h2>
-      <div class="tbl"><table id="t-enum"><thead><tr><th>Enumerator</th><th class="num">Total</th><th class="num">Today</th><th class="num">Partial</th><th class="num">To check</th><th>Last interview</th></tr></thead><tbody></tbody></table></div>
-    </section>
     <section class="card">
       <h2>Where interviews took place</h2>
       <div class="chart" id="c-area" style="height:280px"></div>
@@ -529,7 +552,7 @@ window.startDashboard=function(){
   var CH3=['Bank branch','Bank app','Exchange house','MTO','Remittance app','Hundi','Carried cash','Cash via others','Other'];
   var CURINFO={GBP:['f-gb','Pound sterling','United Kingdom'],MYR:['f-my','Malaysian ringgit','Malaysia'],AED:['f-ae','UAE dirham','United Arab Emirates'],SAR:['f-sa','Saudi riyal','Saudi Arabia'],USD:['f-us','US dollar','United States'],BDT:['f-bd','Bangladeshi taka','Bangladesh']};
   var has3D=(function(){ try{ var c=document.createElement('canvas'); return !!(c.getContext('webgl')||c.getContext('experimental-webgl')); }catch(e){ return false; } })();
-  var mode3D=has3D, mapChart=null, charts=[], DATA=null, R=null, state={country:'all',cur:'USD'}, range={s:null,q:null};
+  var mode3D=has3D, mapChart=null, charts=[], DATA=null, R=null, state={country:'all',en:'all',cur:'USD'}, range={s:null,q:null};
 
   /* one small map per country, cut from the world map before anything is drawn */
   var hasWorld=false;
@@ -548,7 +571,8 @@ window.startDashboard=function(){
   function axis2D(extra){ return Object.assign({axisLine:{lineStyle:{color:LINE}},axisLabel:{color:MUTED},splitLine:{lineStyle:{color:SPLIT}},axisTick:{show:false}},extra||{}); }
   function none(ch,text){ ch.setOption({title:{text:text||'No interviews yet',left:'center',top:'middle',textStyle:{color:MUTED,fontSize:14,fontWeight:400}}}); }
   function wrapLabel(s,w){ var words=String(s).split(' '), lines=[''], i; for(i=0;i<words.length;i++){ if((lines[lines.length-1]+' '+words[i]).trim().length>w && lines[lines.length-1]){ lines.push(words[i]); } else { lines[lines.length-1]=(lines[lines.length-1]+' '+words[i]).trim(); } } if(lines.length>3){ lines=lines.slice(0,3); lines[2]=lines[2].replace(/.{1}$/,'…'); } return lines.join('\n'); }
-  function view(){ return DATA.views[state.country]||DATA.views.all; }
+  function view(){ return (state.en!=='all'&&DATA.views['e'+state.en])||DATA.views[state.country]||DATA.views.all; }
+  function eidx(){ if(state.en==='all') return -1; for(var i=0;i<DATA.enumerators.length;i++) if(DATA.enumerators[i][0]===state.en) return i; return -2; }
   function cidx(){ if(state.country==='all') return -1; for(var i=0;i<DATA.countries.length;i++) if(DATA.countries[i][0]===state.country) return i; return -1; }
   function selName(){ var i=cidx(); return i<0?null:DATA.countries[i][1]; }
   function num(v,dp){ if(v===null||v===undefined||isNaN(v)) return '–'; return Number(v).toLocaleString(state.cur==='BDT'?'en-IN':'en-US',{maximumFractionDigits:dp===undefined?(Math.abs(v)>=100?0:2):dp}); }
@@ -561,9 +585,10 @@ window.startDashboard=function(){
   function median(a){ return quantile(a.slice().sort(function(x,y){return x-y;}),.5); }
   /* answers to one number question, after the country and date filters */
   function values(key,rg){
-    var N=DATA.numbers[key], ci=cidx(), out=[];
+    var N=DATA.numbers[key], ci=cidx(), ei=eidx(), out=[];
     N.rows.forEach(function(r,i){
       if(ci>=0&&r[2]!==ci) return;
+      if(ei!==-1&&r[r.length-1]!==ei) return;
       if(rg&&(r[1]<rg[0]||r[1]>rg[1])) return;
       var v;
       if(N.unit==='money') v=toShow(r[0],r[4]);
@@ -604,12 +629,13 @@ window.startDashboard=function(){
   }
   /* answers to one choice question, after the country and date filters */
   function tally(key,rg){
-    var A=DATA.answers[key], ci=cidx(), n=0, nf=[0,0], cnt=[], bf=[[],[]];
+    var A=DATA.answers[key], ci=cidx(), ei=eidx(), n=0, nf=[0,0], cnt=[], bf=[[],[]];
     A.cells.forEach(function(c){
       if(ci>=0&&c[1]!==ci) return;
+      if(ei!==-1&&c[3]!==ei) return;
       if(rg&&(c[0]<rg[0]||c[0]>rg[1])) return;
-      n+=c[3]; nf[c[2]]+=c[3];
-      for(var j=4;j<c.length;j+=2){ cnt[c[j]]=(cnt[c[j]]||0)+c[j+1]; bf[c[2]][c[j]]=(bf[c[2]][c[j]]||0)+c[j+1]; }
+      n+=c[4]; nf[c[2]]+=c[4];
+      for(var j=5;j<c.length;j+=2){ cnt[c[j]]=(cnt[c[j]]||0)+c[j+1]; bf[c[2]][c[j]]=(bf[c[2]][c[j]]||0)+c[j+1]; }
     });
     var opts=A.options.map(function(l,i){ return {label:l,count:cnt[i]||0,bn:bf[0][i]||0,en:bf[1][i]||0,last:A.last.indexOf(i)>=0?1:0}; });
     if(A.sort){ opts=opts.filter(function(o){return o.count;}); opts.sort(function(a,b){return (a.last-b.last)||(b.count-a.count);});
@@ -731,6 +757,29 @@ window.startDashboard=function(){
     draw(); $('fx-saved').textContent=kept?'Saved':'Applied'; $('fx-saved').hidden=false; setTimeout(function(){ $('fx-saved').hidden=true; },2500); });
   $('fx-reset').addEventListener('click',function(){ R=JSON.parse(JSON.stringify(DATA.rates_per_usd)); try{ localStorage.removeItem('rs-rates'); }catch(err){} draw(); });
 
+  /* ---------- interviews per enumerator per date ---------- */
+  function drawMatrix(){
+    var MX=DATA.matrix, days=MX.days, E=DATA.enumerators, today=new Date(Date.now()+6*36e5).toISOString().slice(0,10);
+    var nodate=Object.keys(MX.rows).some(function(k){return MX.rows[k][''];});
+    var cols=days.concat(nodate?['']:[]), ncol=cols.length+3;
+    $('t-mx').tHead.innerHTML='<tr><th>Interviewer</th><th>Code</th>'+cols.map(function(d){ return '<th class="'+(d===today?'today':'')+'">'+(d?fmtDay(d):'No date')+'</th>'; }).join('')+'<th class="tot">Total</th></tr>';
+    var teams=[], seen={}; E.forEach(function(e,i){ if(!seen[e[2]]){ seen[e[2]]=[]; teams.push(e[2]); } seen[e[2]].push(i); });
+    if(MX.rows['-1']){ teams.push('Interviewer not recorded'); seen['Interviewer not recorded']=[-1]; }
+    var grand=cols.map(function(){return 0;}), gt=0, html='';
+    var cell=function(v){ return '<td class="n'+(v?'':' z')+'">'+(v||0)+'</td>'; };
+    teams.forEach(function(t){
+      var sum=cols.map(function(){return 0;}), st=0, rows='';
+      seen[t].forEach(function(i){ var r=MX.rows[String(i)]||{}, e=i<0?['','Not recorded']:E[i], tot=0;
+        var tds=cols.map(function(d,j){ var v=r[d]||0; sum[j]+=v; grand[j]+=v; tot+=v; return cell(v); }).join(''); st+=tot; gt+=tot;
+        rows+='<tr class="who'+(i>=0&&state.en===e[0]?' on':'')+'"'+(i>=0?' data-e="'+esc(e[0])+'" tabindex="0"':'')+'><td>'+esc(e[1])+'</td><td class="code">'+esc(e[0])+'</td>'+tds+'<td class="tot">'+tot+'</td></tr>'; });
+      html+='<tr class="team"><td colspan="'+ncol+'">'+esc(t)+'</td></tr>'+rows+'<tr class="sum"><td colspan="2">Total</td>'+sum.map(function(v){return '<td>'+v+'</td>';}).join('')+'<td>'+st+'</td></tr>';
+    });
+    html+='<tr class="grand"><td colspan="2">All teams</td>'+grand.map(function(v){return '<td>'+v+'</td>';}).join('')+'<td>'+gt+'</td></tr>';
+    $('t-mx').tBodies[0].innerHTML=html;
+  }
+  $('t-mx').addEventListener('click',function(e){ var tr=e.target.closest('tr.who'); if(tr&&tr.getAttribute('data-e')) setEnum(state.en===tr.getAttribute('data-e')?'all':tr.getAttribute('data-e')); });
+  $('t-mx').addEventListener('keydown',function(e){ if(e.key==='Enter'){ var tr=e.target.closest('tr.who'); if(tr) tr.click(); } });
+
   /* ---------- country comparisons ---------- */
   function mean(a){ return a.length?a.reduce(function(p,c){return p+c;},0)/a.length:null; }
   function stat(a){ var ok=a.length>=DATA.min_n; return {n:a.length,avg:ok?mean(a):null,med:ok?median(a):null}; }
@@ -759,14 +808,14 @@ window.startDashboard=function(){
   }
   function compact(v){ var a=Math.abs(v); if(state.cur==='BDT'){ if(a>=1e7) return +(v/1e7).toFixed(1)+' Cr'; if(a>=1e5) return +(v/1e5).toFixed(1)+' L'; } else if(a>=1e6) return +(v/1e6).toFixed(1)+'M'; if(a>=1e3) return +(v/1e3).toFixed(1)+'K'; return +(+v).toFixed(a<10?2:0)+''; }
   function drawCompare(){
-    var C=DATA.countries, sel=cidx(), onRow=function(i){ return i===sel?' style="background:rgba(233,185,73,.08)"':''; };
+    var C=DATA.countries, sel=cidx(), ei=eidx(), onRow=function(i){ return i===sel?' style="background:rgba(233,185,73,.08)"':''; };
     var by=function(key){ var N=DATA.numbers[key], out=C.map(function(){return [];});
-      N.rows.forEach(function(r){ if(r[2]<0) return; var v;
+      N.rows.forEach(function(r){ if(r[2]<0) return; if(ei!==-1&&r[r.length-1]!==ei) return; var v;
         if(key==='FEE_PCT'){ var a=toShow(r[5],r[6]); if(!a) return; v=100*toShow(r[0],r[4])/a; } else v=toShow(r[0],r[4]);
         out[r[2]].push(v); }); return out; };
     /* last transaction */
     var d6=by('D6'), fee=by('FEE_PCT'), ps=C.map(function(){return [];}), pr=C.map(function(){return [];});
-    (DATA.last_pairs||[]).forEach(function(r){ if(r[3]<0) return; ps[r[3]].push(toShow(r[0],r[1])); pr[r[3]].push(toShow(r[2],5)); });
+    (DATA.last_pairs||[]).forEach(function(r){ if(r[3]<0) return; if(ei!==-1&&r[4]!==ei) return; ps[r[3]].push(toShow(r[0],r[1])); pr[r[3]].push(toShow(r[2],5)); });
     var last=C.map(function(c,i){ return {name:c[1],s:stat(d6[i]),p:stat(ps[i]),r:stat(pr[i]),f:stat(fee[i])}; });
     moneyBars('c-last',last.map(function(x){return [x.name,x.s.avg];}),BEN);
     $('th-last-a').textContent='Average sent ('+state.cur+')'; $('th-last-m').textContent='Median sent ('+state.cur+')'; $('th-last-s2').textContent='Their average sent ('+state.cur+')'; $('th-last-r').textContent='Their average received ('+state.cur+')';
@@ -777,13 +826,15 @@ window.startDashboard=function(){
     $('t-inc-c').tBodies[0].innerHTML=inc.map(function(x,i){ return '<tr'+onRow(i)+'><td><span class="flag '+((FL[x.name]||{}).css||'')+'" style="vertical-align:-3px;margin-right:8px"></span>'+esc(x.name)+'</td><td class="num">'+x.s.n+'</td><td class="num">'+money(x.s.avg)+'</td><td class="num">'+money(x.s.med)+'</td></tr>'; }).join('');
     /* income by profession (follows the country filter) */
     var jobs=DATA.jobs.map(function(){return [];});
-    DATA.income_by_job.forEach(function(r){ if(sel>=0&&r[2]!==sel) return; jobs[r[3]].push(toShow(r[0],r[1])); });
+    DATA.income_by_job.forEach(function(r){ if(sel>=0&&r[2]!==sel) return; if(ei!==-1&&r[4]!==ei) return; jobs[r[3]].push(toShow(r[0],r[1])); });
     var jr=DATA.jobs.map(function(l,i){ return {name:l.replace(/\s*\(.*$/,''),s:stat(jobs[i])}; }).filter(function(x){return x.s.n;}).sort(function(a,b){ return (b.s.avg===null?-1:b.s.avg)-(a.s.avg===null?-1:a.s.avg); });
     $('h-inc-j').textContent='Average income by profession'+(sel>=0?' · '+C[sel][1]:'');
     moneyBars('c-inc-j',jr.map(function(x){return [x.name,x.s.avg];}),BEN);
     $('t-inc-j').tBodies[0].innerHTML=jr.map(function(x){ return '<tr><td>'+esc(x.name)+'</td><td class="num">'+x.s.n+'</td><td class="num">'+money(x.s.avg)+'</td><td class="num">'+money(x.s.med)+'</td></tr>'; }).join('')||'<tr><td colspan="4" class="empty">No answers yet.</td></tr>';
     /* hundi */
-    var hr=DATA.channel_amounts[5]||[], hun=C.map(function(c,i){ var rows=hr.filter(function(r){return r[2]===i;}), ch=((DATA.views[c[0]]||{}).channels||[])[5]||{base:0,used:0};
+    var hr=DATA.channel_amounts[5]||[], hb=C.map(function(){return {base:0,used:0};});
+    DATA.answers.D1.cells.forEach(function(c){ if(c[1]<0) return; if(ei!==-1&&c[3]!==ei) return; hb[c[1]].base+=c[4]; for(var j=5;j<c.length;j+=2) if(c[j]===5) hb[c[1]].used+=c[j+1]; });
+    var hun=C.map(function(c,i){ var rows=hr.filter(function(r){return r[2]===i&&(ei===-1||r[4]===ei);}), ch=hb[i];
       var t=rows.map(function(r){return r[3];}).filter(function(x){return x!==null&&x!==undefined;});
       return {name:c[1],base:ch.base,used:ch.used,s:stat(rows.map(function(r){return toShow(r[0],r[1]);})),t:t.length>=DATA.min_n?mean(t):null}; });
     moneyBars('c-hundi',hun.map(function(x){return [x.name,x.s.avg];}),'#FF8A6B');
@@ -803,6 +854,7 @@ window.startDashboard=function(){
     $('k-ref').textContent=t.refused; $('k-pbn').textContent=(d.form_partial||{}).bn||0; $('k-pen').textContent=(d.form_partial||{}).en||0;
     $('k-bn').textContent=(d.form_total||d.form).bn||0; $('k-en').textContent=(d.form_total||d.form).en||0;
     [].forEach.call(document.querySelectorAll('.chip'),function(b){ b.setAttribute('aria-pressed',b.getAttribute('data-c')===state.country); });
+    $('fen').value=state.en;
     [].forEach.call(document.querySelectorAll('.cur'),function(x){ x.setAttribute('aria-pressed',x.getAttribute('data-c')===state.cur); });
 
     drawMap(); drawFx();
@@ -827,8 +879,8 @@ window.startDashboard=function(){
       tile('Median sender fee',pc(fee.v),'of amount sent · '+fee.n+' answers')+
       tile('Aware of 2.5% incentive',pc(k.aware.p),'of '+k.aware.n+' respondents');
 
-    var chn=d.channels, idx=chn.map(function(c,i){return i;}), ci=cidx(), total=0;
-    var amt=DATA.channel_amounts.map(function(rows){ var a=rows.filter(function(r){return ci<0||r[2]===ci;}).map(function(r){return toShow(r[0],r[1]);}); var s=a.reduce(function(p,c){return p+c;},0); total+=s; return {a:a,s:s}; });
+    var chn=d.channels, idx=chn.map(function(c,i){return i;}), ci=cidx(), EI=eidx(), total=0;
+    var amt=DATA.channel_amounts.map(function(rows){ var a=rows.filter(function(r){return (ci<0||r[2]===ci)&&(EI===-1||r[4]===EI);}).map(function(r){return toShow(r[0],r[1]);}); var s=a.reduce(function(p,c){return p+c;},0); total+=s; return {a:a,s:s}; });
     formBars('c-chan',idx,chn.map(function(c,i){return mode3D?(CH3[i]||c.label):wrapLabel(c.label,16);}),function(i){return chn[i];},{stack:true,interval:0,barMax:34,g3:{boxWidth:240,boxDepth:40,alpha:20,beta:14,distance:170,interval:0}});
     $('th-med').textContent='Median amount ('+state.cur+')';
     $('t-chan').tBodies[0].innerHTML=chn.map(function(c,i){ var p=c.base?c.used/c.base*100:null, a=amt[i]||{a:[],s:0}, ok=a.a.length>=DATA.min_n;
@@ -850,7 +902,7 @@ window.startDashboard=function(){
     drawCompare(); drawStatsList(); drawAnswersList(); drawTrend(d);
 
     var row=function(e,full){ return '<tr><td>'+esc(e.name)+'</td><td class="num">'+e.interviews+'</td><td class="num">'+(e.today||'')+'</td>'+(full?'<td class="num">'+(e.partial||'')+'</td><td class="num">'+(e.flags?'<span class="pill warn">'+e.flags+'</span>':'')+'</td>':'')+'<td>'+(e.last?esc(fmtDay(e.last)):'–')+'</td></tr>'; };
-    $('t-enum').tBodies[0].innerHTML=d.enumerators.map(function(e){return row(e,true);}).join('')||'<tr><td colspan="6" class="empty">No interviews yet.</td></tr>';
+    drawMatrix();
     $('t-rate').tBodies[0].innerHTML=d.rates.map(function(r){ return '<tr><td>'+r.cur+'</td><td class="num">'+(r.imp===null?'–':r.imp)+' <small style="color:var(--faint)">n '+r.imp_n+'</small></td><td class="num">'+(r.hun===null?'–':r.hun)+' <small style="color:var(--faint)">n '+r.hun_n+'</small></td></tr>'; }).join('')||'<tr><td colspan="3" class="empty">No answers yet.</td></tr>';
     $('t-iss').tBodies[0].innerHTML=d.issues.map(function(i){
       return '<tr><td><span class="pill bad">'+esc(i.issue)+'</span></td><td style="font-family:var(--mono)">'+esc(i.id)+'</td><td>'+esc(i.enumerator)+'</td><td>'+FN[i.form]+'</td><td>'+(i.d?fmtDay(i.d):'–')+'</td></tr>';
@@ -980,7 +1032,9 @@ window.startDashboard=function(){
   $('qvar').addEventListener('change',function(){ curQ=this.value; if(DATA) drawAnswer(); });
 
   /* ---------- controls ---------- */
-  function setCountry(c){ state.country=c; draw(); }
+  function setCountry(c){ state.country=c; state.en='all'; draw(); }
+  function setEnum(e){ state.en=e; if(e!=='all') state.country='all'; draw(); }
+  $('fen').addEventListener('change',function(){ setEnum(this.value); });
   $('chips').addEventListener('click',function(e){ var b=e.target.closest('.chip'); if(b) setCountry(b.getAttribute('data-c')); });
   [].forEach.call(document.querySelectorAll('.cur'),function(b){ b.addEventListener('click',function(){
     state.cur=b.getAttribute('data-c'); try{ localStorage.setItem('rs-cur',state.cur); }catch(e){} if(DATA) draw(); }); });
@@ -1003,6 +1057,9 @@ window.startDashboard=function(){
     R=JSON.parse(JSON.stringify(d.rates_per_usd));
     try{ var mine=JSON.parse(localStorage.getItem('rs-rates')||'null'); if(mine) Object.keys(R).forEach(function(k){ if(mine[k]>0) R[k]=mine[k]; }); R.USD=1; }catch(e){}
     $('chips').innerHTML='<button type="button" class="chip all" data-c="all">All countries</button>'+d.countries.map(function(c){ return '<button type="button" class="chip" data-c="'+c[0]+'"><span class="flag '+((FL[c[1]]||{}).css||'')+'"></span>'+esc(c[1])+'</button>'; }).join('');
+    var tg={}, to=[]; d.enumerators.forEach(function(e){ if(!d.views['e'+e[0]]) return; if(!tg[e[2]]){ tg[e[2]]=[]; to.push(e[2]); } tg[e[2]].push(e); });
+    $('fen').innerHTML='<option value="all">All enumerators</option>'+to.map(function(t){ return '<optgroup label="'+esc(t)+'">'+tg[t].map(function(e){ return '<option value="'+esc(e[0])+'">'+esc(e[1])+'</option>'; }).join('')+'</optgroup>'; }).join('');
+    if(state.en!=='all'&&!d.views['e'+state.en]) state.en='all';
     ['sd1','sd2','qd1','qd2'].forEach(function(id){ if(d.days.length){ $(id).min=d.days[0]; $(id).max=d.days[d.days.length-1]; } });
     range.s=readRange('sd1','sd2'); range.q=readRange('qd1','qd2');
     if(!d.views[state.country]) state.country='all';
