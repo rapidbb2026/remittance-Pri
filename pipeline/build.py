@@ -323,7 +323,7 @@ CUR = ["GBP", "MYR", "USD", "AED", "SAR", "BDT"]
 CUR_IDX = {1: 0, 2: 1, 3: 2, 4: 3, 5: 4, "BDT": 5}
 
 
-def answer_cells(res, D, forms, day_of, country_of):
+def answer_cells(res, D, forms, day_of, country_of, enum_of):
     """Counts per day x country x questionnaire for every choice question (the page adds them up)."""
     out = {}
 
@@ -335,7 +335,7 @@ def answer_cells(res, D, forms, day_of, country_of):
             got = getter(c["vals"])
             if not got:
                 continue
-            cell = cells[(day_of(c), country_of(c), forms.index(c["src"]))]
+            cell = cells[(day_of(c), country_of(c), forms.index(c["src"]), enum_of(c))]
             cell[0] += 1
             for code in got:
                 if code == "none":
@@ -353,8 +353,8 @@ def answer_cells(res, D, forms, day_of, country_of):
         last = [i for i, (c, _) in enumerate(values) if str(c) in LAST_CODES]
         out[key] = {"group": group, "question": question, "label": label, "multi": multi, "options": labels,
                     "sort": bool(sort), "top": top, "last": last,
-                    "cells": [[d, k, f, n] + [x for pair in sorted(cnt.items()) for x in pair]
-                              for (d, k, f), (n, cnt) in sorted(cells.items())]}
+                    "cells": [[d, k, f, e, n] + [x for pair in sorted(cnt.items()) for x in pair]
+                              for (d, k, f, e), (n, cnt) in sorted(cells.items())]}
 
     for mid, mtitle, items in MODULES:
         group = f"{mid}. {mtitle}"
@@ -377,9 +377,10 @@ def answer_cells(res, D, forms, day_of, country_of):
     return out
 
 
-def number_rows(res, cfg, forms, day_of, country_of, n_countries):
+def number_rows(res, cfg, forms, day_of, country_of, n_countries, enum_of):
     """Every number, one row per answer, so the page can filter by date and re-convert currencies.
-    Row = [value, day, country, questionnaire] (+ [currency] for money, + fee details for the fee share)."""
+    Row = [value, day, country, questionnaire] (+ [currency] for money, + fee details for the fee share),
+    always ending with the enumerator."""
     money = {iid: opt for _, _, items in MODULES for iid, typ, _, opt in items if typ == "money"}
     groups = {mid: f"{mid}. {t}" for mid, t, _ in MODULES}
     list_ids = cfg["privacy"].get("list_flagged_case_ids", True)
@@ -395,19 +396,19 @@ def number_rows(res, cfg, forms, day_of, country_of, n_countries):
                 cur = CUR_IDX.get("BDT" if opt["currency"] == "BDT" else v.get(opt["currency"]))
                 if amt is None or cur is None:
                     continue
-                rows.append([amt] + base + [cur])
+                rows.append([amt] + base + [cur, enum_of(c)])
                 usd.append(c["usd"][key])
             elif key == "FEE_PCT":
                 if v.get("FEE_PCT") is None:
                     continue
                 d6c = CUR_IDX.get(v.get("D6_CURRENCY"))
                 paid = v.get("D8_STATUS") == 1
-                rows.append([v.get("D8_AMOUNT") if paid else 0] + base + [CUR_IDX.get(v.get("D8_CURRENCY")) if paid else d6c, v.get("D6_AMOUNT"), d6c])
+                rows.append([v.get("D8_AMOUNT") if paid else 0] + base + [CUR_IDX.get(v.get("D8_CURRENCY")) if paid else d6c, v.get("D6_AMOUNT"), d6c, enum_of(c)])
                 usd.append(v["FEE_PCT"])
             else:
                 if v.get(key) is None:
                     continue
-                rows.append([v[key]] + base)
+                rows.append([v[key]] + base + [enum_of(c)])
                 usd.append(v[key])
             ids.append(v.get("IDCODE"))
         # ID codes are published only for outliers (all countries, or within a country)
@@ -427,11 +428,11 @@ def number_rows(res, cfg, forms, day_of, country_of, n_countries):
     return out
 
 
-def channel_rows(res, forms, country_of):
+def channel_rows(res, forms, country_of, enum_of):
     out = []
     ccy = lambda c: CUR_IDX.get(c["vals"].get("C3_CURRENCY"))  # noqa: E731
     for k, _ in CHANNELS:
-        out.append([[c["vals"][f"D1_{k}_AMOUNT"], ccy(c), country_of(c), c["vals"].get(f"D1_{k}_TIMES")] for c in res
+        out.append([[c["vals"][f"D1_{k}_AMOUNT"], ccy(c), country_of(c), c["vals"].get(f"D1_{k}_TIMES"), enum_of(c)] for c in res
                     if c["vals"].get(f"D1_{k}_USED") == 1 and c["vals"].get(f"D1_{k}_AMOUNT") is not None and ccy(c) is not None])
     return out
 
@@ -629,6 +630,16 @@ def main():
                     D[field]["values"].append((code, lab))
                     known.add(code)
 
+    # team list from settings.json: names here win over the dictionary
+    roster, team_of = [], {}
+    for team in cfg.get("teams", []):
+        for code, name in team["members"]:
+            roster.append((code, name, team["name"]))
+            team_of[code] = team["name"]
+    names = dict(D["INTNAME"]["values"])
+    names.update({code: name for code, name, _ in roster})
+    D["INTNAME"]["values"] = list(names.items())
+
     now = dt.datetime.now(DHAKA)
     cases, src_meta = [], []
     for src in cfg["sources"]:
@@ -640,11 +651,27 @@ def main():
                          "last_sync": last_sync(args.data_dir, src["id"])})
     derive(cases, cfg, now.date())
 
+    for code in sorted({c["vals"].get("INTNAME") for c in cases if c["vals"].get("INTNAME") is not None} - set(team_of), key=str):
+        roster.append((code, staff_label("Interviewer", code, names, True), "Not in the team list"))
+    enum_idx = {code: i for i, (code, _, _) in enumerate(roster)}
+    enum_of = lambda c: enum_idx.get(c["vals"].get("INTNAME"), -1)             # noqa: E731
+
+    # interviews per enumerator per interview date (every case that is not deleted)
+    per = defaultdict(Counter)
+    for c in cases:
+        per[enum_of(c)][c["date"].isoformat() if c["date"] else ""] += 1
+    matrix = {"days": sorted({d for cnt in per.values() for d in cnt if d}),
+              "rows": {str(i): dict(cnt) for i, cnt in per.items()}}
+
     forms = [s["id"] for s in cfg["sources"]]
     countries = D["DES_COUNTRY_NAME"]["values"]
     views = {"all": view(cases, cfg, D, forms, now.date())}
     for code, _ in countries:
         views[str(code)] = view([c for c in cases if c["country"] == code], cfg, D, forms, now.date())
+    for code, _, _ in roster:                                   # one view per enumerator, for the enumerator filter
+        mine = [c for c in cases if c["vals"].get("INTNAME") == code]
+        if mine:
+            views[f"e{code}"] = view(mine, cfg, D, forms, now.date())
 
     in_results = {"complete"} | ({"reopened"} if cfg.get("results_include_reopened", True) else set())
     res = [c for c in cases if c["status"] in in_results]
@@ -653,14 +680,14 @@ def main():
     ctry_idx = {code: i for i, (code, _) in enumerate(countries)}
     day_of = lambda c: day_idx[c["date"].isoformat()] if c["date"] else -1   # noqa: E731
     country_of = lambda c: ctry_idx.get(c["country"], -1)                     # noqa: E731
-    ans = answer_cells(res, D, forms, day_of, country_of)
+    ans = answer_cells(res, D, forms, day_of, country_of, enum_of)
     job_idx = {code: i for i, (code, _) in enumerate(D["B5"]["values"])}
 
     unlabelled = []
     for key, a in ans.items():
         for i, lab in enumerate(a["options"]):
             if "(no label in dictionary)" in lab:
-                n = sum(cell[j + 1] for cell in a["cells"] for j in range(4, len(cell), 2) if cell[j] == i)
+                n = sum(cell[j + 1] for cell in a["cells"] for j in range(5, len(cell), 2) if cell[j] == i)
                 unlabelled.append({"id": key, "label": lab, "n": n})
                 log(f"  NOTE {key}: {lab} ({n} interviews)")
     for t in sorted(UNTRANSLATED):
@@ -678,14 +705,16 @@ def main():
         "unlabelled": unlabelled,
         "untranslated": len(UNTRANSLATED),
         "days": days, "currencies": CUR,
-        "numbers": number_rows(res, cfg, forms, day_of, country_of, len(countries)),
+        "numbers": number_rows(res, cfg, forms, day_of, country_of, len(countries), enum_of),
         "answers": ans,
-        "channel_amounts": channel_rows(res, forms, country_of),
+        "channel_amounts": channel_rows(res, forms, country_of, enum_of),
+        "enumerators": [[str(code), name, team] for code, name, team in roster],
+        "matrix": matrix,
         # sent and received for the same transaction, only where the respondent knew both
-        "last_pairs": [[c["vals"]["D6_AMOUNT"], CUR_IDX[c["vals"]["D6_CURRENCY"]], c["vals"]["D7_AMOUNT_BDT"], country_of(c)] for c in res
+        "last_pairs": [[c["vals"]["D6_AMOUNT"], CUR_IDX[c["vals"]["D6_CURRENCY"]], c["vals"]["D7_AMOUNT_BDT"], country_of(c), enum_of(c)] for c in res
                        if c["vals"].get("D6_AMOUNT") and c["vals"].get("D6_CURRENCY") in CUR_IDX and c["vals"].get("D7_AMOUNT_BDT") and c["vals"].get("D7_DK") == 1],
         "jobs": [lab for _, lab in D["B5"]["values"]],
-        "income_by_job": [[c["vals"]["B9_01"], CUR_IDX[c["vals"]["B9_02"]], country_of(c), job_idx[c["vals"]["B5"]]] for c in res
+        "income_by_job": [[c["vals"]["B9_01"], CUR_IDX[c["vals"]["B9_02"]], country_of(c), job_idx[c["vals"]["B5"]], enum_of(c)] for c in res
                           if c["vals"].get("B9_01") is not None and c["vals"].get("B9_02") in CUR_IDX and c["vals"].get("B5") in job_idx],
         "views": views,
     }
