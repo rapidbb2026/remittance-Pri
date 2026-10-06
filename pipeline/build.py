@@ -656,12 +656,18 @@ def main():
     enum_idx = {code: i for i, (code, _, _) in enumerate(roster)}
     enum_of = lambda c: enum_idx.get(c["vals"].get("INTNAME"), -1)             # noqa: E731
 
-    # interviews per enumerator per interview date (every case that is not deleted)
+    # interviews per enumerator per interview date, inside the country where the interview took place.
+    # Same interviews as the country totals elsewhere on the page, so each country block adds up to them.
+    counted = {"complete"} | ({"reopened"} if cfg.get("results_include_reopened", True) else set())
+    country_pos = {code: i for i, (code, _) in enumerate(D["DES_COUNTRY_NAME"]["values"])}
     per = defaultdict(Counter)
     for c in cases:
-        per[enum_of(c)][c["date"].isoformat() if c["date"] else ""] += 1
+        if c["status"] in counted:
+            per[(country_pos.get(c["country"], -1), enum_of(c))][c["date"].isoformat() if c["date"] else ""] += 1
     matrix = {"days": sorted({d for cnt in per.values() for d in cnt if d}),
-              "rows": {str(i): dict(cnt) for i, cnt in per.items()}}
+              "rows": {f"{k}|{e}": dict(cnt) for (k, e), cnt in per.items()},
+              "home": {str(enum_idx[code]): country_pos.get(team.get("country"), -1)
+                       for team in cfg.get("teams", []) for code, _ in team["members"]}}
 
     forms = [s["id"] for s in cfg["sources"]]
     countries = D["DES_COUNTRY_NAME"]["values"]
