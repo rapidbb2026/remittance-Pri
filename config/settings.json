@@ -107,5 +107,148 @@
       "সোনালী ব্যাংক": "Sonali Bank",
       "শাপলা মানি ট্রান্সফার": "Shapla Money Transfer"
     }
-  }
+  },
+  "teams": [
+    {
+      "name": "Team UK",
+      "members": [
+        [
+          22,
+          "Mesbah Shaheed"
+        ],
+        [
+          1,
+          "Rubaiyat Sharmin"
+        ],
+        [
+          2,
+          "Raya Ahmed"
+        ],
+        [
+          3,
+          "Mahbub Reza Chowdhury"
+        ],
+        [
+          4,
+          "Sonom Rubayat Noor"
+        ],
+        [
+          5,
+          "Anisur Rahman"
+        ],
+        [
+          6,
+          "Fahad Al Ahmed"
+        ],
+        [
+          7,
+          "Abdul Awal Mamun"
+        ],
+        [
+          8,
+          "Humaira Kumkum"
+        ]
+      ]
+    },
+    {
+      "name": "Team US",
+      "members": [
+        [
+          23,
+          "Mohammad Anisur Rahman"
+        ],
+        [
+          9,
+          "Sadia Bhuiyan"
+        ],
+        [
+          10,
+          "Shaqib Hossain Bhuiyan"
+        ],
+        [
+          11,
+          "Kazi Shirin Jothi"
+        ],
+        [
+          12,
+          "Mohammed Delwar Bhuiyan"
+        ],
+        [
+          13,
+          "Imtiaz Kasem"
+        ],
+        [
+          14,
+          "Md. Rokonuzzaman Shaheen"
+        ],
+        [
+          15,
+          "Shayan Rahman"
+        ]
+      ]
+    },
+    {
+      "name": "Team UAE",
+      "members": [
+        [
+          25,
+          "Shajel Shah Qureshi_UAE"
+        ],
+        [
+          16,
+          "Nasir Uddin"
+        ],
+        [
+          17,
+          "Abir Qureshi"
+        ],
+        [
+          18,
+          "Borhan Uddin"
+        ]
+      ]
+    },
+    {
+      "name": "Team Saudi Arabia",
+      "members": [
+        [
+          24,
+          "Shajel Shah Qureshi_Saudi Arabia"
+        ],
+        [
+          19,
+          "Basil Munir Khan"
+        ],
+        [
+          20,
+          "Mohammad Shahrear Adil"
+        ],
+        [
+          21,
+          "Shayaan Al Islam"
+        ]
+      ]
+    },
+    {
+      "name": "Team Malaysia",
+      "members": [
+        [
+          26,
+          "Abidul Islam"
+        ],
+        [
+          27,
+          "Lipika Nahar"
+        ],
+        [
+          28,
+          "Tahmid Alam"
+        ],
+        [
+          29,
+          "Sabrina Sadmin"
+        ]
+      ]
+    }
+  ]
 }
