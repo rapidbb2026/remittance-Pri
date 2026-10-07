@@ -464,7 +464,20 @@ def case_sheets(res, numbers, D, forms):
         cid = c["vals"].get("IDCODE")
         if cid is not None and str(cid) in wanted:
             out.setdefault(str(cid), []).append([forms.index(c["src"])] + [text(k, c["vals"].get(k)) for k in items])
-    return {"items": [D[k].get("label") or k for k in items], "strs": strs, "rows": out}
+    # which answers of each interview are outliers, and which currency goes with which amount
+    money = {iid: opt for _, _, its in MODULES for iid, typ, _, opt in its if typ == "money"}
+    item_of = lambda key: money[key]["amount"] if key in money else {"FEE_PCT": "D8_AMOUNT", "B1_YEARS": "B1_01"}.get(key, key)  # noqa: E731
+    flagged = {}
+    for key, n in numbers.items():
+        if item_of(key) in items:
+            for cid in set(n["ids"].values()):
+                flagged.setdefault(cid, set()).add(items.index(item_of(key)))
+    cur = {opt["amount"]: opt["currency"] for opt in money.values()}
+    cur.update({f"D1_{k}_AMOUNT": "C3_CURRENCY" for k, _ in CHANNELS})
+    cur.update({"E10_RATE_BDT": "BDT"})
+    return {"items": [D[k].get("label") or k for k in items], "ids": items, "strs": strs, "rows": out,
+            "out": {cid: sorted(v) for cid, v in flagged.items()},
+            "cur": {str(items.index(a)): ("BDT" if c == "BDT" else items.index(c)) for a, c in cur.items() if a in items and (c == "BDT" or c in items)}}
 
 
 def channel_rows(res, forms, country_of, enum_of):
