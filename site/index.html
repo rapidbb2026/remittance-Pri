@@ -239,6 +239,7 @@ footer{color:var(--faint);font-size:.8rem}
   <div class="filterbar" aria-label="Filters">
     <div class="sel"><span class="lab">Country</span><div class="chips" id="chips" role="group" aria-label="Country"></div></div>
     <div class="sel"><label for="fen">Enumerator</label><select id="fen"></select></div>
+    <div class="sel"><span class="lab">Gender</span><div class="seg" role="group" aria-label="Gender"><button type="button" class="sexb" data-s="all" aria-pressed="true">All</button><button type="button" class="sexb" data-s="m" aria-pressed="false">Male</button><button type="button" class="sexb" data-s="f" aria-pressed="false">Female</button></div></div>
     <div class="sel"><span class="lab">Amounts in</span><div class="seg" role="group" aria-label="Currency"><button type="button" class="cur" data-c="USD" aria-pressed="true">USD</button><button type="button" class="cur" data-c="BDT" aria-pressed="false">BDT</button></div></div>
     <div class="keys"><span><i style="background:var(--ben)"></i>Bangla questionnaire</span><span><i style="background:var(--non)"></i>English questionnaire</span></div>
   </div>
@@ -311,6 +312,12 @@ footer{color:var(--faint);font-size:.8rem}
     <h2>Last transaction by country</h2>
     <div class="chart" id="c-last" style="height:300px"></div>
     <div class="tbl"><table id="t-last"><thead><tr><th>Country</th><th class="num">Answers</th><th class="num" id="th-last-a">Average sent</th><th class="num" id="th-last-m">Median sent</th><th class="num">Knew amount received</th><th class="num" id="th-last-s2">Their average sent</th><th class="num" id="th-last-r">Their average received</th><th class="num">Average fee share</th></tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <section class="card">
+    <div style="display:flex;flex-wrap:wrap;gap:10px 16px;align-items:flex-end;justify-content:space-between"><h2 id="h-rate" style="margin:0">Exchange rate received, by channel</h2><div class="sel"><label for="rcur">Currency sent</label><select id="rcur" style="min-width:150px"></select></div></div>
+    <div class="chart" id="c-rate" style="height:300px"></div>
+    <div class="tbl"><table id="t-rch"><thead><tr><th>Channel</th><th class="num">Answers</th><th class="num">Average</th><th class="num">Median</th><th class="num">Mode</th></tr></thead><tbody></tbody></table></div>
   </section>
 
   <div class="grid2">
@@ -560,7 +567,7 @@ window.startDashboard=function(){
   var CH3=['Bank branch','Bank app','Exchange house','MTO','Remittance app','Hundi','Carried cash','Cash via others','Other'];
   var CURINFO={GBP:['f-gb','Pound sterling','United Kingdom'],MYR:['f-my','Malaysian ringgit','Malaysia'],AED:['f-ae','UAE dirham','United Arab Emirates'],SAR:['f-sa','Saudi riyal','Saudi Arabia'],USD:['f-us','US dollar','United States'],BDT:['f-bd','Bangladeshi taka','Bangladesh']};
   var has3D=(function(){ try{ var c=document.createElement('canvas'); return !!(c.getContext('webgl')||c.getContext('experimental-webgl')); }catch(e){ return false; } })();
-  var mode3D=has3D, mapChart=null, charts=[], DATA=null, R=null, state={country:'all',en:'all',cur:'USD'}, range={s:null,q:null};
+  var mode3D=has3D, mapChart=null, charts=[], DATA=null, R=null, state={country:'all',en:'all',cur:'USD',sex:'all',rcur:null}, range={s:null,q:null};
 
   /* one small map per country, cut from the world map before anything is drawn */
   var hasWorld=false;
@@ -579,7 +586,9 @@ window.startDashboard=function(){
   function axis2D(extra){ return Object.assign({axisLine:{lineStyle:{color:LINE}},axisLabel:{color:MUTED},splitLine:{lineStyle:{color:SPLIT}},axisTick:{show:false}},extra||{}); }
   function none(ch,text){ ch.setOption({title:{text:text||'No interviews yet',left:'center',top:'middle',textStyle:{color:MUTED,fontSize:14,fontWeight:400}}}); }
   function wrapLabel(s,w){ var words=String(s).split(' '), lines=[''], i; for(i=0;i<words.length;i++){ if((lines[lines.length-1]+' '+words[i]).trim().length>w && lines[lines.length-1]){ lines.push(words[i]); } else { lines[lines.length-1]=(lines[lines.length-1]+' '+words[i]).trim(); } } if(lines.length>3){ lines=lines.slice(0,3); lines[2]=lines[2].replace(/.{1}$/,'…'); } return lines.join('\n'); }
-  function view(){ return (state.en!=='all'&&DATA.views['e'+state.en])||DATA.views[state.country]||DATA.views.all; }
+  function sfx(){ return state.sex==='all'?'':'|'+state.sex; }
+  function gidx(){ return state.sex==='m'?0:state.sex==='f'?1:-1; }
+  function view(){ var s=sfx(); return (state.en!=='all'&&DATA.views['e'+state.en+s])||DATA.views[state.country+s]||DATA.views['all'+s]||DATA.views.all; }
   function eidx(){ if(state.en==='all') return -1; for(var i=0;i<DATA.enumerators.length;i++) if(DATA.enumerators[i][0]===state.en) return i; return -2; }
   function cidx(){ if(state.country==='all') return -1; for(var i=0;i<DATA.countries.length;i++) if(DATA.countries[i][0]===state.country) return i; return -1; }
   function selName(){ var i=cidx(); return i<0?null:DATA.countries[i][1]; }
@@ -593,10 +602,11 @@ window.startDashboard=function(){
   function median(a){ return quantile(a.slice().sort(function(x,y){return x-y;}),.5); }
   /* answers to one number question, after the country and date filters */
   function values(key,rg){
-    var N=DATA.numbers[key], ci=cidx(), ei=eidx(), out=[];
+    var N=DATA.numbers[key], ci=cidx(), ei=eidx(), gi=gidx(), out=[];
     N.rows.forEach(function(r,i){
       if(ci>=0&&r[2]!==ci) return;
-      if(ei!==-1&&r[r.length-1]!==ei) return;
+      if(ei!==-1&&r[r.length-2]!==ei) return;
+      if(gi>=0&&r[r.length-1]!==gi) return;
       if(rg&&(r[1]<rg[0]||r[1]>rg[1])) return;
       var v;
       if(N.unit==='money') v=toShow(r[0],r[4]);
@@ -637,13 +647,14 @@ window.startDashboard=function(){
   }
   /* answers to one choice question, after the country and date filters */
   function tally(key,rg){
-    var A=DATA.answers[key], ci=cidx(), ei=eidx(), n=0, nf=[0,0], cnt=[], bf=[[],[]];
+    var A=DATA.answers[key], ci=cidx(), ei=eidx(), gi=gidx(), n=0, nf=[0,0], cnt=[], bf=[[],[]];
     A.cells.forEach(function(c){
       if(ci>=0&&c[1]!==ci) return;
       if(ei!==-1&&c[3]!==ei) return;
+      if(gi>=0&&c[4]!==gi) return;
       if(rg&&(c[0]<rg[0]||c[0]>rg[1])) return;
-      n+=c[4]; nf[c[2]]+=c[4];
-      for(var j=5;j<c.length;j+=2){ cnt[c[j]]=(cnt[c[j]]||0)+c[j+1]; bf[c[2]][c[j]]=(bf[c[2]][c[j]]||0)+c[j+1]; }
+      n+=c[5]; nf[c[2]]+=c[5];
+      for(var j=6;j<c.length;j+=2){ cnt[c[j]]=(cnt[c[j]]||0)+c[j+1]; bf[c[2]][c[j]]=(bf[c[2]][c[j]]||0)+c[j+1]; }
     });
     var opts=A.options.map(function(l,i){ return {label:l,count:cnt[i]||0,bn:bf[0][i]||0,en:bf[1][i]||0,last:A.last.indexOf(i)>=0?1:0}; });
     if(A.sort){ opts=opts.filter(function(o){return o.count;}); opts.sort(function(a,b){return (a.last-b.last)||(b.count-a.count);});
@@ -692,7 +703,7 @@ window.startDashboard=function(){
 
   /* ---------- map: the world, or one country when a country is chosen ---------- */
   function drawMap(){
-    var all=DATA.views.all, names=DATA.countries.map(function(c){return c[1];}), max=1, sel=selName();
+    var all=DATA.views['all'+sfx()]||DATA.views.all, names=DATA.countries.map(function(c){return c[1];}), max=1, sel=selName();
     names.forEach(function(n){ max=Math.max(max,all.country[n]||0); });
     $('map-title').textContent=sel?'Interviews in '+sel:'Interviews by destination country';
     if(mapChart){ mapChart.dispose(); } var ch=mapChart=echarts.init($('c-map'),null,{renderer:'canvas'});
@@ -767,7 +778,7 @@ window.startDashboard=function(){
 
   /* ---------- interviews per enumerator per date ---------- */
   function drawMatrix(){
-    var MX=DATA.matrix, days=MX.days, E=DATA.enumerators, C=DATA.countries, today=new Date(Date.now()+6*36e5).toISOString().slice(0,10);
+    var MX0=DATA.matrix, GX=gidx(), MX={days:MX0.days,home:MX0.home,rows:(GX>=0&&MX0.rows_sex)?MX0.rows_sex[GX]:MX0.rows}, days=MX.days, E=DATA.enumerators, C=DATA.countries, today=new Date(Date.now()+6*36e5).toISOString().slice(0,10);
     var nodate=Object.keys(MX.rows).some(function(k){return MX.rows[k][''];});
     var cols=days.concat(nodate?['']:[]), ncol=cols.length+3;
     $('t-mx').tHead.innerHTML='<tr><th>Interviewer</th><th>Code</th>'+cols.map(function(d){ return '<th class="'+(d===today?'today':'')+'">'+(d?fmtDay(d):'No date')+'</th>'; }).join('')+'<th class="tot">Total</th></tr>';
@@ -797,7 +808,7 @@ window.startDashboard=function(){
     var A=DATA.answers.A1, C=DATA.countries, ci=cidx(), ei=eidx(), by=C.map(function(){return [0,0,0];}), all=[0,0,0];
     if(!A) return;
     A.cells.forEach(function(c){ if(ei!==-1&&c[3]!==ei) return;
-      for(var j=5;j<c.length;j+=2){ var k=Math.min(c[j],2); if(c[1]>=0) by[c[1]][k]+=c[j+1]; if(ci<0||c[1]===ci) all[k]+=c[j+1]; } });
+      for(var j=6;j<c.length;j+=2){ var k=Math.min(c[j],2); if(c[1]>=0) by[c[1]][k]+=c[j+1]; if(ci<0||c[1]===ci) all[k]+=c[j+1]; } });
     $('k-male').textContent=all[0]; $('k-female').textContent=all[1];
     var SX=['#5AA9E6','#F08BB4','#8C9F96'], SN=['Male','Female','Other'], names=C.map(function(c){return c[1];});
     var ch=mk('c-sex');
@@ -841,14 +852,14 @@ window.startDashboard=function(){
   }
   function compact(v){ var a=Math.abs(v); if(state.cur==='BDT'){ if(a>=1e7) return +(v/1e7).toFixed(1)+' Cr'; if(a>=1e5) return +(v/1e5).toFixed(1)+' L'; } else if(a>=1e6) return +(v/1e6).toFixed(1)+'M'; if(a>=1e3) return +(v/1e3).toFixed(1)+'K'; return +(+v).toFixed(a<10?2:0)+''; }
   function drawCompare(){
-    var C=DATA.countries, sel=cidx(), ei=eidx(), onRow=function(i){ return i===sel?' style="background:rgba(233,185,73,.08)"':''; };
+    var C=DATA.countries, sel=cidx(), ei=eidx(), gi=gidx(), onRow=function(i){ return i===sel?' style="background:rgba(233,185,73,.08)"':''; };
     var by=function(key){ var N=DATA.numbers[key], out=C.map(function(){return [];});
-      N.rows.forEach(function(r){ if(r[2]<0) return; if(ei!==-1&&r[r.length-1]!==ei) return; var v;
+      N.rows.forEach(function(r){ if(r[2]<0) return; if(ei!==-1&&r[r.length-2]!==ei) return; if(gi>=0&&r[r.length-1]!==gi) return; var v;
         if(key==='FEE_PCT'){ var a=toShow(r[5],r[6]); if(!a) return; v=100*toShow(r[0],r[4])/a; } else v=toShow(r[0],r[4]);
         out[r[2]].push(v); }); return out; };
     /* last transaction */
     var d6=by('D6'), fee=by('FEE_PCT'), ps=C.map(function(){return [];}), pr=C.map(function(){return [];});
-    (DATA.last_pairs||[]).forEach(function(r){ if(r[3]<0) return; if(ei!==-1&&r[4]!==ei) return; ps[r[3]].push(toShow(r[0],r[1])); pr[r[3]].push(toShow(r[2],5)); });
+    (DATA.last_pairs||[]).forEach(function(r){ if(r[3]<0) return; if(ei!==-1&&r[4]!==ei) return; if(gi>=0&&r[5]!==gi) return; ps[r[3]].push(toShow(r[0],r[1])); pr[r[3]].push(toShow(r[2],5)); });
     var last=C.map(function(c,i){ return {name:c[1],s:stat(d6[i]),p:stat(ps[i]),r:stat(pr[i]),f:stat(fee[i])}; });
     moneyBars('c-last',last.map(function(x){return [x.name,x.s.avg];}),BEN);
     $('th-last-a').textContent='Average sent ('+state.cur+')'; $('th-last-m').textContent='Median sent ('+state.cur+')'; $('th-last-s2').textContent='Their average sent ('+state.cur+')'; $('th-last-r').textContent='Their average received ('+state.cur+')';
@@ -859,19 +870,38 @@ window.startDashboard=function(){
     $('t-inc-c').tBodies[0].innerHTML=inc.map(function(x,i){ return '<tr'+onRow(i)+'><td><span class="flag '+((FL[x.name]||{}).css||'')+'" style="vertical-align:-3px;margin-right:8px"></span>'+esc(x.name)+'</td><td class="num">'+x.s.n+'</td><td class="num">'+money(x.s.avg)+'</td><td class="num">'+money(x.s.med)+'</td></tr>'; }).join('');
     /* income by profession (follows the country filter) */
     var jobs=DATA.jobs.map(function(){return [];});
-    DATA.income_by_job.forEach(function(r){ if(sel>=0&&r[2]!==sel) return; if(ei!==-1&&r[4]!==ei) return; jobs[r[3]].push(toShow(r[0],r[1])); });
+    DATA.income_by_job.forEach(function(r){ if(sel>=0&&r[2]!==sel) return; if(ei!==-1&&r[4]!==ei) return; if(gi>=0&&r[5]!==gi) return; jobs[r[3]].push(toShow(r[0],r[1])); });
     var jr=DATA.jobs.map(function(l,i){ return {name:l.replace(/\s*\(.*$/,''),s:stat(jobs[i])}; }).filter(function(x){return x.s.n;}).sort(function(a,b){ return (b.s.avg===null?-1:b.s.avg)-(a.s.avg===null?-1:a.s.avg); });
     $('h-inc-j').textContent='Average income by profession'+(sel>=0?' · '+C[sel][1]:'');
     moneyBars('c-inc-j',jr.map(function(x){return [x.name,x.s.avg];}),BEN);
     $('t-inc-j').tBodies[0].innerHTML=jr.map(function(x){ return '<tr><td>'+esc(x.name)+'</td><td class="num">'+x.s.n+'</td><td class="num">'+money(x.s.avg)+'</td><td class="num">'+money(x.s.med)+'</td></tr>'; }).join('')||'<tr><td colspan="4" class="empty">No answers yet.</td></tr>';
     /* hundi */
     var hr=DATA.channel_amounts[5]||[], hb=C.map(function(){return {base:0,used:0};});
-    DATA.answers.D1.cells.forEach(function(c){ if(c[1]<0) return; if(ei!==-1&&c[3]!==ei) return; hb[c[1]].base+=c[4]; for(var j=5;j<c.length;j+=2) if(c[j]===5) hb[c[1]].used+=c[j+1]; });
-    var hun=C.map(function(c,i){ var rows=hr.filter(function(r){return r[2]===i&&(ei===-1||r[4]===ei);}), ch=hb[i];
+    DATA.answers.D1.cells.forEach(function(c){ if(c[1]<0) return; if(ei!==-1&&c[3]!==ei) return; if(gi>=0&&c[4]!==gi) return; hb[c[1]].base+=c[5]; for(var j=6;j<c.length;j+=2) if(c[j]===5) hb[c[1]].used+=c[j+1]; });
+    var hun=C.map(function(c,i){ var rows=hr.filter(function(r){return r[2]===i&&(ei===-1||r[4]===ei)&&(gi<0||r[5]===gi);}), ch=hb[i];
       var t=rows.map(function(r){return r[3];}).filter(function(x){return x!==null&&x!==undefined;});
       return {name:c[1],base:ch.base,used:ch.used,s:stat(rows.map(function(r){return toShow(r[0],r[1]);})),t:t.length>=DATA.min_n?mean(t):null}; });
     moneyBars('c-hundi',hun.map(function(x){return [x.name,x.s.avg];}),'#FF8A6B');
     $('t-hundi').tBodies[0].innerHTML=hun.map(function(x,i){ return '<tr'+onRow(i)+'><td><span class="flag '+((FL[x.name]||{}).css||'')+'" style="vertical-align:-3px;margin-right:8px"></span>'+esc(x.name)+'</td><td class="num">'+x.base+'</td><td class="num">'+x.used+'</td><td class="num">'+pc(x.base?x.used/x.base*100:null)+'</td><td class="num">'+money(x.s.avg)+'</td><td class="num">'+money(x.s.med)+'</td><td class="num">'+(x.t===null?'–':num(x.t,1))+'</td></tr>'; }).join('');
+  }
+
+  /* exchange rate of the last transaction: all channels, then each channel */
+  function modeOf(a){ var m={}, best=null, bn=0; a.forEach(function(x){ var k=(Math.round(x*10)/10).toFixed(1); m[k]=(m[k]||0)+1; }); Object.keys(m).sort(function(p,q){return p-q;}).forEach(function(k){ if(m[k]>bn){ bn=m[k]; best=+k; } }); return bn>1?best:null; }
+  function drawRates(){
+    var RR=DATA.rate_rows||[], CH=DATA.rate_channels||[], ci=cidx(), ei=eidx(), gi=gidx();
+    var rows=RR.filter(function(r){ return (ci<0||r[3]===ci)&&(ei===-1||r[4]===ei)&&(gi<0||r[5]===gi); });
+    var cnt=[0,0,0,0,0]; rows.forEach(function(r){ if(r[1]<5) cnt[r[1]]++; });
+    var cur=state.rcur; if(cur===null||cur===undefined){ cur=0; cnt.forEach(function(n,i){ if(n>cnt[cur]) cur=i; }); }
+    $('rcur').innerHTML=DATA.currencies.slice(0,5).map(function(c,i){ return '<option value="'+i+'"'+(i===cur?' selected':'')+'>'+c+' ('+cnt[i]+')</option>'; }).join('');
+    var code=DATA.currencies[cur], per=CH.map(function(){return [];}), all=[];
+    rows.forEach(function(r){ if(r[1]!==cur) return; all.push(r[0]); if(per[r[2]]) per[r[2]].push(r[0]); });
+    var line=function(name,a,cls){ var ok=a.length>=DATA.min_n, f=function(v){ return v===null?'–':Number(v).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); };
+      return '<tr'+(cls?' style="background:rgba(233,185,73,.08);font-weight:700"':'')+'><td>'+esc(name)+'</td><td class="num">'+a.length+'</td><td class="num">'+f(ok?mean(a):null)+'</td><td class="num">'+f(ok?median(a):null)+'</td><td class="num">'+f(ok?modeOf(a):null)+'</td></tr>'; };
+    $('h-rate').textContent='Exchange rate received, by channel · BDT per 1 '+code;
+    $('t-rch').tBodies[0].innerHTML=line('All channels',all,1)+CH.map(function(l,i){ return per[i].length?line(l,per[i]):''; }).join('');
+    var save=state.cur; state.cur='USD';
+    moneyBars('c-rate',[['All channels',all.length>=DATA.min_n?mean(all):null]].concat(CH.map(function(l,i){ return [l,per[i].length>=DATA.min_n?mean(per[i]):null]; })),NON);
+    state.cur=save;
   }
 
   /* ---------- everything ---------- */
@@ -888,6 +918,7 @@ window.startDashboard=function(){
     $('k-bn').textContent=(d.form_total||d.form).bn||0; $('k-en').textContent=(d.form_total||d.form).en||0;
     [].forEach.call(document.querySelectorAll('.chip'),function(b){ b.setAttribute('aria-pressed',b.getAttribute('data-c')===state.country); });
     $('fen').value=state.en;
+    [].forEach.call(document.querySelectorAll('.sexb'),function(x){ x.setAttribute('aria-pressed',x.getAttribute('data-s')===state.sex); });
     [].forEach.call(document.querySelectorAll('.cur'),function(x){ x.setAttribute('aria-pressed',x.getAttribute('data-c')===state.cur); });
 
     drawMap(); drawFx();
@@ -913,7 +944,7 @@ window.startDashboard=function(){
       tile('Aware of 2.5% incentive',pc(k.aware.p),'of '+k.aware.n+' respondents');
 
     var chn=d.channels, idx=chn.map(function(c,i){return i;}), ci=cidx(), EI=eidx(), total=0;
-    var amt=DATA.channel_amounts.map(function(rows){ var a=rows.filter(function(r){return (ci<0||r[2]===ci)&&(EI===-1||r[4]===EI);}).map(function(r){return toShow(r[0],r[1]);}); var s=a.reduce(function(p,c){return p+c;},0); total+=s; return {a:a,s:s}; });
+    var amt=DATA.channel_amounts.map(function(rows){ var a=rows.filter(function(r){return (ci<0||r[2]===ci)&&(EI===-1||r[4]===EI)&&(gidx()<0||r[5]===gidx());}).map(function(r){return toShow(r[0],r[1]);}); var s=a.reduce(function(p,c){return p+c;},0); total+=s; return {a:a,s:s}; });
     formBars('c-chan',idx,chn.map(function(c,i){return mode3D?(CH3[i]||c.label):wrapLabel(c.label,16);}),function(i){return chn[i];},{stack:true,interval:0,barMax:34,g3:{boxWidth:240,boxDepth:40,alpha:20,beta:14,distance:170,interval:0}});
     $('th-med').textContent='Median amount ('+state.cur+')';
     $('t-chan').tBodies[0].innerHTML=chn.map(function(c,i){ var p=c.base?c.used/c.base*100:null, a=amt[i]||{a:[],s:0}, ok=a.a.length>=DATA.min_n;
@@ -932,7 +963,7 @@ window.startDashboard=function(){
     var places=Object.keys(d.place);
     formBars('c-area',places,places.map(function(n){return wrapLabel(n,18);}),function(k){return d.place[k];},{interval:0,barMax:30,g3:{boxWidth:150,boxDepth:44,distance:175,beta:22,interval:0}});
 
-    drawCompare(); drawStatsList(); drawAnswersList(); drawTrend(d);
+    drawCompare(); drawRates(); drawStatsList(); drawAnswersList(); drawTrend(d);
 
     var row=function(e,full){ return '<tr><td>'+esc(e.name)+'</td><td class="num">'+e.interviews+'</td><td class="num">'+(e.today||'')+'</td>'+(full?'<td class="num">'+(e.partial||'')+'</td><td class="num">'+(e.flags?'<span class="pill warn">'+e.flags+'</span>':'')+'</td>':'')+'<td>'+(e.last?esc(fmtDay(e.last)):'–')+'</td></tr>'; };
     drawMatrix(); drawSex();
@@ -1065,7 +1096,9 @@ window.startDashboard=function(){
   $('qvar').addEventListener('change',function(){ curQ=this.value; if(DATA) drawAnswer(); });
 
   /* ---------- controls ---------- */
-  function setCountry(c){ state.country=c; state.en='all'; draw(); }
+  function setCountry(c){ state.country=c; state.en='all'; state.rcur=null; draw(); }
+  [].forEach.call(document.querySelectorAll('.sexb'),function(b){ b.addEventListener('click',function(){ state.sex=b.getAttribute('data-s'); if(DATA) draw(); }); });
+  $('rcur').addEventListener('change',function(){ state.rcur=+this.value; if(DATA) draw(); });
   function setEnum(e){ state.en=e; if(e!=='all') state.country='all'; draw(); }
   $('fen').addEventListener('change',function(){ setEnum(this.value); });
   $('chips').addEventListener('click',function(e){ var b=e.target.closest('.chip'); if(b) setCountry(b.getAttribute('data-c')); });
