@@ -433,6 +433,40 @@ def number_rows(res, cfg, forms, day_of, country_of, n_countries, enum_of):
     return out
 
 
+def case_sheets(res, numbers, D, forms):
+    """Every answer of the interviews flagged as outliers, so the page can show one in full.
+    Texts are stored once in a shared list; each interview is a list of positions in it (-1 = not answered)."""
+    wanted = {i for n in numbers.values() for i in n["ids"].values()}
+    items = [k for k in D if k != "IDCODE"]
+    strs, pos = [], {}
+
+    def put(s):
+        if s not in pos:
+            pos[s] = len(strs)
+            strs.append(s)
+        return pos[s]
+
+    def text(k, x):
+        if x is None or str(x).strip() == "":
+            return -1
+        vals = {str(c).strip(): lab for c, lab in D[k].get("values") or []}
+        s = str(x).strip()
+        if vals:
+            if s in vals:
+                return put(vals[s])
+            if D[k].get("type") == "alpha":                      # several answers ticked
+                return put("; ".join(vals.get(ch, f"Code {ch}") for ch in s.replace(" ", "")))
+            return put(f"Code {s}")
+        return put(s)
+
+    out = {}
+    for c in res:
+        cid = c["vals"].get("IDCODE")
+        if cid is not None and str(cid) in wanted:
+            out.setdefault(str(cid), []).append([forms.index(c["src"])] + [text(k, c["vals"].get(k)) for k in items])
+    return {"items": [D[k].get("label") or k for k in items], "strs": strs, "rows": out}
+
+
 def channel_rows(res, forms, country_of, enum_of):
     out = []
     ccy = lambda c: CUR_IDX.get(c["vals"].get("C3_CURRENCY"))  # noqa: E731
@@ -717,6 +751,7 @@ def main():
     for t in sorted(UNTRANSLATED):
         log(f"  NOTE typed answer still in Bangla, add an English spelling under aliases in settings.json: {t}")
 
+    numbers = number_rows(res, cfg, forms, day_of, country_of, len(countries), enum_of)
     out = {
         "title": cfg.get("title", "Remittance Survey"),
         "updated": now.strftime("%Y-%m-%d %H:%M"),
@@ -729,7 +764,8 @@ def main():
         "unlabelled": unlabelled,
         "untranslated": len(UNTRANSLATED),
         "days": days, "currencies": CUR,
-        "numbers": number_rows(res, cfg, forms, day_of, country_of, len(countries), enum_of),
+        "numbers": numbers,
+        "cases": case_sheets(res, numbers, D, forms),
         "answers": ans,
         "channel_amounts": channel_rows(res, forms, country_of, enum_of),
         "enumerators": [[str(code), name, team] for code, name, team in roster],
