@@ -342,7 +342,7 @@ footer{color:var(--faint);font-size:.8rem}
   <section class="card">
     <h2>Channels used in the past 12 months</h2>
     <div class="chart" id="c-chan" style="height:340px"></div>
-    <div class="tbl"><table id="t-chan"><thead><tr><th>Channel</th><th class="num">Used it</th><th class="num">Users</th><th class="num">Median times</th><th class="num" id="th-med">Median amount</th><th class="num">Share of money</th></tr></thead><tbody></tbody></table></div>
+    <div class="tbl"><table id="t-chan"><thead><tr><th>Channel</th><th class="num">Used it</th><th class="num">Users</th><th class="num">Median times</th><th class="num" id="th-avg">Average amount</th><th class="num" id="th-med">Median amount</th><th class="num" id="th-tot">Total amount</th><th class="num">Share of money</th></tr></thead><tbody></tbody></table></div>
   </section>
 
   <section class="card">
@@ -946,9 +946,11 @@ window.startDashboard=function(){
     var chn=d.channels, idx=chn.map(function(c,i){return i;}), ci=cidx(), EI=eidx(), total=0;
     var amt=DATA.channel_amounts.map(function(rows){ var a=rows.filter(function(r){return (ci<0||r[2]===ci)&&(EI===-1||r[4]===EI)&&(gidx()<0||r[5]===gidx());}).map(function(r){return toShow(r[0],r[1]);}); var s=a.reduce(function(p,c){return p+c;},0); total+=s; return {a:a,s:s}; });
     formBars('c-chan',idx,chn.map(function(c,i){return mode3D?(CH3[i]||c.label):wrapLabel(c.label,16);}),function(i){return chn[i];},{stack:true,interval:0,barMax:34,g3:{boxWidth:240,boxDepth:40,alpha:20,beta:14,distance:170,interval:0}});
-    $('th-med').textContent='Median amount ('+state.cur+')';
+    $('th-med').textContent='Median amount ('+state.cur+')'; $('th-avg').textContent='Average amount ('+state.cur+')'; $('th-tot').textContent='Total amount ('+state.cur+')';
     $('t-chan').tBodies[0].innerHTML=chn.map(function(c,i){ var p=c.base?c.used/c.base*100:null, a=amt[i]||{a:[],s:0}, ok=a.a.length>=DATA.min_n;
-      return '<tr><td>'+esc(c.label)+'</td><td class="num">'+pc(p)+'</td><td class="num">'+c.used+'</td><td class="num">'+(c.times===null?'–':c.times)+'</td><td class="num">'+(ok?money(median(a.a)):'–')+'</td><td class="num">'+((ok||a.s===0)&&total?pc(a.s/total*100):'–')+'</td></tr>'; }).join('');
+      return '<tr><td>'+esc(c.label)+'</td><td class="num">'+pc(p)+'</td><td class="num">'+c.used+'</td><td class="num">'+(c.times===null?'–':c.times)+'</td><td class="num">'+(ok?money(mean(a.a)):'–')+'</td><td class="num">'+(ok?money(median(a.a)):'–')+'</td><td class="num">'+(ok?money(a.s):'–')+'</td><td class="num">'+((ok||a.s===0)&&total?pc(a.s/total*100):'–')+'</td></tr>'; }).join('')
+      +(function(){ var all=[]; amt.forEach(function(x){ all=all.concat(x.a); }); var ok=all.length>=DATA.min_n, base=chn.length?chn[0].base:0;
+        return '<tr style="background:rgba(233,185,73,.08);font-weight:700"><td>All channels</td><td class="num">–</td><td class="num">'+base+'</td><td class="num">–</td><td class="num">'+(ok?money(mean(all)):'–')+'</td><td class="num">'+(ok?money(median(all)):'–')+'</td><td class="num">'+(ok?money(total):'–')+'</td><td class="num">'+(ok&&total?'100%':'–')+'</td></tr>'; })();
 
     var tr=d.trust.slice().reverse(), chTr=mk('c-trust',true);
     if(!tr.some(function(r){return r.n;})) none(chTr,'No answers yet');
