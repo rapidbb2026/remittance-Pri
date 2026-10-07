@@ -196,11 +196,15 @@ td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:now
 #case[open]{display:flex;flex-direction:column}
 #case::backdrop{background:rgba(2,10,7,.72);backdrop-filter:blur(3px)}
 .casehd{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--line)}
-#case-body{overflow:auto;padding:6px 18px 18px}
+#case-body{overflow:auto;padding:0 18px 18px}
 #case-body table{width:100%;border-collapse:collapse;font-size:.88rem}
 #case-body td{padding:7px 8px 7px 0;border-bottom:1px solid var(--line);vertical-align:top;overflow-wrap:anywhere}
 #case-body td:first-child{color:var(--muted);width:58%}
-.casef{margin:12px 0 4px;font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--gold)}
+.casechips{position:sticky;top:0;z-index:1;display:flex;flex-wrap:wrap;gap:6px;padding:10px 0;background:var(--bg2)}
+.casechips span{padding:4px 11px;border-radius:999px;background:rgba(255,255,255,.05);border:1px solid var(--line);font-size:.84rem;font-weight:600}
+.casechips i{font-style:normal;font-weight:500;color:var(--muted);margin-right:4px}
+#case-body td b{color:var(--ink);font-family:var(--mono);font-size:.84rem;margin-right:4px}
+#case-body td strong{font-weight:700}
 .outl span{font:500 .78rem var(--mono);padding:2px 8px;border-radius:6px;background:rgba(255,138,122,.12);color:var(--bad)}
 .outl span.x{background:rgba(255,138,122,.3);color:#FFD9D2}
 .trend-head{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between;margin-bottom:6px}
@@ -1115,9 +1119,18 @@ window.startDashboard=function(){
   function showCase(id){
     var K=DATA.cases, recs=K&&K.rows[id]; if(!recs) return;
     $('case-title').textContent='Respondent '+id;
+    var flag=(K.out&&K.out[id])||[], CU=K.cur||{}, IX={}, hideCur={}; K.ids.forEach(function(k,i){ IX[k]=i; });
+    Object.keys(CU).forEach(function(a){ if(CU[a]!=='BDT') hideCur[CU[a]]=1; });
+    var nf=function(s){ return /^-?\d+(\.\d+)?$/.test(s)?Number(s).toLocaleString('en-US',{maximumFractionDigits:2}):s; };
+    var get=function(r,k){ var v=IX[k]===undefined?-1:r[IX[k]+1]; return v<0?'':K.strs[v]; };
+    var HEAD={SUPERNAME:1,INTNAME:1,DES_COUNTRY_NAME:1,CITY:1,INT_DATE:1,AGREE:1};
     $('case-body').innerHTML=recs.map(function(r){
-      var f=DATA.forms[r[0]], rows=K.items.map(function(l,i){ var v=r[i+1]; return v<0?'':'<tr><td>'+esc(l)+'</td><td>'+esc(K.strs[v])+'</td></tr>'; }).join('');
-      return '<div class="casef">'+esc(f?f.label:'')+'</div><table>'+rows+'</table>'; }).join('');
+      var f=DATA.forms[r[0]], dt=get(r,'INT_DATE'), chips=[['Form',f?f.label.replace(/ form$/,''):''],['Date',/^\d{8}$/.test(dt)?(+dt.slice(6))+' '+M[+dt.slice(4,6)-1]+' '+dt.slice(0,4):dt],['Interviewer',get(r,'INTNAME')],['Supervisor',get(r,'SUPERNAME')],['Country',get(r,'DES_COUNTRY_NAME')],['City',get(r,'CITY')]];
+      var rows=K.items.map(function(l,i){ var v=r[i+1]; if(v<0||HEAD[K.ids[i]]||hideCur[i]) return '';
+        var m=/^([A-Z]{1,2}\d+(?:\.\d+)*)[.\s_]*(.*)$/.exec(l), val=K.strs[v], c=CU[i];
+        if(c!==undefined&&/^-?\d+(\.\d+)?$/.test(val)){ var code=c==='BDT'?'Tk':(r[c+1]<0?'':(/\(([A-Z]{3})\)/.exec(K.strs[r[c+1]])||[0,K.strs[r[c+1]]])[1]); val=(code?code+' ':'')+nf(val); } else val=nf(val);
+        return '<tr><td>'+(m?'<b>'+esc(m[1])+'</b> '+esc(m[2]):esc(l))+'</td><td><strong>'+esc(val)+'</strong>'+(flag.indexOf(i)>=0?' <span class="pill bad">outlier</span>':'')+'</td></tr>'; }).join('');
+      return '<div class="casechips">'+chips.filter(function(c){return c[1];}).map(function(c){ return '<span><i>'+c[0]+'</i> '+esc(c[1])+'</span>'; }).join('')+'</div><table>'+rows+'</table>'; }).join('');
     var dg=$('case'); if(dg.showModal){ if(!dg.open) dg.showModal(); } else dg.setAttribute('open',''); $('case-body').scrollTop=0;
   }
   $('s-olist').addEventListener('click',function(e){ var b=e.target.closest('button[data-id]'); if(b) showCase(b.getAttribute('data-id')); });
