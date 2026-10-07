@@ -189,6 +189,18 @@ td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:now
 .inner{margin-top:12px}
 .sub2{margin:0 0 4px;font:700 .9rem var(--display)}
 .outl{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.outl button{font:500 .78rem var(--mono);padding:2px 8px;border-radius:6px;border:0;cursor:pointer;background:rgba(255,138,122,.12);color:var(--bad)}
+.outl button:hover{background:rgba(255,138,122,.45);color:#fff}
+.outl button.x{background:rgba(255,138,122,.3);color:#FFD9D2}
+#case{width:min(860px,calc(100vw - 24px));max-height:88vh;padding:0;border:1px solid var(--line2);border-radius:16px;background:var(--bg2);color:var(--ink);overflow:hidden}
+#case[open]{display:flex;flex-direction:column}
+#case::backdrop{background:rgba(2,10,7,.72);backdrop-filter:blur(3px)}
+.casehd{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--line)}
+#case-body{overflow:auto;padding:6px 18px 18px}
+#case-body table{width:100%;border-collapse:collapse;font-size:.88rem}
+#case-body td{padding:7px 8px 7px 0;border-bottom:1px solid var(--line);vertical-align:top;overflow-wrap:anywhere}
+#case-body td:first-child{color:var(--muted);width:58%}
+.casef{margin:12px 0 4px;font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--gold)}
 .outl span{font:500 .78rem var(--mono);padding:2px 8px;border-radius:6px;background:rgba(255,138,122,.12);color:var(--bad)}
 .outl span.x{background:rgba(255,138,122,.3);color:#FFD9D2}
 .trend-head{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between;margin-bottom:6px}
@@ -429,6 +441,7 @@ footer{color:var(--faint);font-size:.8rem}
   </section>
 
   <footer id="foot"></footer>
+  <dialog id="case" aria-labelledby="case-title"><div class="casehd"><h2 id="case-title" style="margin:0"></h2><button type="button" class="out" id="case-x">Close</button></div><div id="case-body"></div></dialog>
 </div>
 </div>
 
@@ -1012,6 +1025,7 @@ window.startDashboard=function(){
               {name:'Normal curve',type:'line',smooth:true,symbol:'none',data:h.normal,lineStyle:{color:BEN,width:2.5,type:'dashed'},z:5}]});
     var cb=echarts.init($('c-box')); statCharts.push(cb);
     var ol=s.outliers;
+    cb.on('click',function(p){ if(p.seriesName==='outliers'&&ol[p.dataIndex]&&ol[p.dataIndex].id) showCase(ol[p.dataIndex].id); });
     cb.setOption({tooltip:Object.assign({trigger:'item',formatter:function(p){
         if(p.seriesName==='box'){ return 'Lowest (not outlier): '+tk(s.whisker_low)+'<br>Q1: '+tk(s.q1)+'<br>Median: '+tk(s.median)+'<br>Q3: '+tk(s.q3)+'<br>Highest (not outlier): '+tk(s.whisker_high); }
         if(p.seriesName==='mean') return 'Mean: '+tk(s.mean);
@@ -1023,7 +1037,7 @@ window.startDashboard=function(){
                 itemStyle:{color:'rgba(79,214,190,.18)',borderColor:NON,borderWidth:1.5},emphasis:{itemStyle:{borderColor:'#fff'}}},
               {name:'mean',type:'scatter',data:[[s.mean,0]],symbol:'diamond',symbolSize:12,itemStyle:{color:BEN},z:6},
               {name:'outliers',type:'scatter',data:ol.map(function(o){return [o.value,0];}),symbolSize:function(v,p){return ol[p.dataIndex].extreme?11:8;},itemStyle:{color:'#FF8A6B',borderColor:'#06120E',borderWidth:1},z:7}]});
-    $('s-olist').innerHTML=ol.filter(function(o){return o.id;}).map(function(o){ return '<span class="'+(o.extreme?'x':'')+'" title="'+esc(tk(o.value))+'">'+esc(o.id)+'</span>'; }).join('')+(s.outlier_n>ol.length?'<span style="background:none;color:var(--muted)">+'+(s.outlier_n-ol.length)+' more</span>':'');
+    $('s-olist').innerHTML=ol.filter(function(o){return o.id;}).map(function(o){ return '<button type="button" data-id="'+esc(o.id)+'" class="'+(o.extreme?'x':'')+'" title="'+esc(tk(o.value))+'">'+esc(o.id)+'</button>'; }).join('')+(s.outlier_n>ol.length?'<span style="background:none;color:var(--muted)">+'+(s.outlier_n-ol.length)+' more</span>':'');
     var bg=s.by_group;
     $('t-grp').tBodies[0].innerHTML=F.filter(function(g){return bg[g]&&bg[g].n;}).map(function(g){ var x=bg[g];
       return '<tr><td><span class="pill" style="background:'+(g==='bn'?'rgba(233,185,73,.15)':'rgba(79,214,190,.15)')+';color:'+FC[g]+'">'+FN[g]+'</span></td><td class="num">'+x.n+'</td><td class="num">'+tk(x.mean)+'</td><td class="num">'+tk(x.median)+'</td></tr>'; }).join('')||'<tr><td colspan="4" class="empty">No answers yet.</td></tr>';
@@ -1096,6 +1110,19 @@ window.startDashboard=function(){
                label:{show:true,position:'right',color:MUTED,fontSize:12,formatter:function(p){ var o=rev[p.dataIndex]; return o.count+'  ('+Math.round(o.count/q.n*100)+'%)'; }}}]});
   }
   $('qvar').addEventListener('change',function(){ curQ=this.value; if(DATA) drawAnswer(); });
+
+  /* one interview in full (outliers only) */
+  function showCase(id){
+    var K=DATA.cases, recs=K&&K.rows[id]; if(!recs) return;
+    $('case-title').textContent='Respondent '+id;
+    $('case-body').innerHTML=recs.map(function(r){
+      var f=DATA.forms[r[0]], rows=K.items.map(function(l,i){ var v=r[i+1]; return v<0?'':'<tr><td>'+esc(l)+'</td><td>'+esc(K.strs[v])+'</td></tr>'; }).join('');
+      return '<div class="casef">'+esc(f?f.label:'')+'</div><table>'+rows+'</table>'; }).join('');
+    var dg=$('case'); if(dg.showModal){ if(!dg.open) dg.showModal(); } else dg.setAttribute('open',''); $('case-body').scrollTop=0;
+  }
+  $('s-olist').addEventListener('click',function(e){ var b=e.target.closest('button[data-id]'); if(b) showCase(b.getAttribute('data-id')); });
+  $('case-x').addEventListener('click',function(){ var dg=$('case'); if(dg.close) dg.close(); else dg.removeAttribute('open'); });
+  $('case').addEventListener('click',function(e){ if(e.target===this&&this.close) this.close(); });
 
   /* ---------- controls ---------- */
   function setCountry(c){ state.country=c; state.en='all'; state.rcur=null; draw(); }
