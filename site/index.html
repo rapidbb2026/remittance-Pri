@@ -104,6 +104,18 @@ header .sub{margin:2px 0 0;color:var(--muted);font-size:.9rem}
 .f-ae{background:linear-gradient(#EF3340,#EF3340) left/27% 100% no-repeat,linear-gradient(#00843D 33.3%,#fff 33.3% 66.6%,#111 66.6%)}
 .f-gb{background:linear-gradient(#C8102E,#C8102E) center/100% 20% no-repeat,linear-gradient(#C8102E,#C8102E) center/12% 100% no-repeat,linear-gradient(#fff,#fff) center/100% 38% no-repeat,linear-gradient(#fff,#fff) center/24% 100% no-repeat,#012169}
 .f-us{background:linear-gradient(#3C3B6E,#3C3B6E) top left/42% 54% no-repeat,repeating-linear-gradient(#B22234 0 7.7%,#fff 7.7% 15.4%)}
+.f-qa{background:linear-gradient(90deg,#fff 0 32%,#8A1538 32%)}
+.f-bh{background:linear-gradient(90deg,#fff 0 28%,#CE1126 28%)}
+#t-glance tr.gl{cursor:pointer}
+#t-glance tr.gl:hover td{background:rgba(255,255,255,.03)}
+#t-glance tr.on td,#t-target tr.on td{background:rgba(233,185,73,.08)}
+#t-target input{width:92px;text-align:right;background:var(--bg2);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:5px 8px;font:inherit}
+#t-target input:focus{border-color:var(--gold);outline:none}
+#t-target td.prog{display:flex;align-items:center;gap:10px;min-width:200px}
+.pbar{flex:1;height:8px;border-radius:99px;background:rgba(255,255,255,.07);overflow:hidden}
+.pbar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#2C9E8C,#F2CC6B)}
+.kpi .note{font-size:.78rem;color:var(--muted);margin-top:2px}
+.muted{color:var(--muted)}
 .f-bd{background:radial-gradient(circle at 45% 50%,#F42A41 0 33%,#006A4E 35%)}
 .keys{display:flex;gap:14px;font-size:.8rem;color:var(--muted);margin-left:auto;align-self:center;flex-wrap:wrap}
 .keys i,.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
@@ -265,6 +277,7 @@ footer{color:var(--faint);font-size:.8rem}
 
   <section class="kpis" aria-label="Key numbers">
     <div class="kpi main"><div class="lab">Total cases</div><div class="val" id="k-tot">–</div></div>
+    <div class="kpi"><div class="lab">Done vs target</div><div class="val" id="k-done">–</div><div class="note" id="k-done-n"></div></div>
     <div class="kpi"><div class="lab">Partial</div><div class="split"><span style="color:var(--ben)" id="k-pbn">–</span><small>Bangla</small><span style="color:var(--non)" id="k-pen">–</span><small>English</small></div></div>
     <div class="kpi"><div class="lab">Today</div><div class="val" id="k-today">–</div></div>
     <div class="kpi"><div class="lab">Last 7 days</div><div class="val" id="k-7">–</div></div>
@@ -272,6 +285,12 @@ footer{color:var(--faint);font-size:.8rem}
     <div class="kpi"><div class="lab">Respondents</div><div class="split"><span id="k-male">–</span><small>Male</small><span id="k-female">–</span><small>Female</small></div></div>
     <div class="kpi"><div class="lab">Refused</div><div class="val" id="k-ref">–</div></div>
     <div class="kpi"><div class="lab">Last sync</div><div class="sync"><span><i style="background:var(--ben)"></i><b id="k-sbn">–</b></span><span><i style="background:var(--non)"></i><b id="k-sen">–</b></span></div></div>
+  </section>
+
+  <section class="card">
+    <div class="ratebar" style="justify-content:space-between"><h2 style="margin:0">Completed against target</h2>
+      <span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="pill warn" id="tg-dirty" hidden>Not saved yet</span><span class="pill ok" id="tg-saved" hidden>Saved</span><button class="save" id="tg-save" type="button">Save targets</button></span></div>
+    <div class="tbl"><table id="t-target"><thead><tr><th>Country</th><th class="num">Completed</th><th class="num">Target</th><th class="num">Remaining</th><th>Done</th></tr></thead><tbody></tbody></table></div>
   </section>
 
   <section class="card">
@@ -310,6 +329,7 @@ footer{color:var(--faint);font-size:.8rem}
   <section class="card">
     <h2>Remittances at a glance</h2>
     <div class="stiles" id="money"></div>
+    <div class="tbl" style="margin-top:14px"><table id="t-glance"><thead><tr><th>Country</th><th class="num">Respondents</th><th class="num">Sent in 12 months</th><th class="num">Formal channel</th><th class="num">Hundi</th><th class="num">Only hundi</th><th class="num">Cash by hand</th><th class="num">Aware of incentive</th></tr></thead><tbody></tbody></table></div>
   </section>
 
   <section class="card" id="fx">
@@ -553,11 +573,13 @@ window.startDashboard=function(){
     'United Arab Emirates':{css:'f-ae',c:'#F4F6FA',g:grad(0,0,1,0,[[0,'#EF3340'],[.26,'#EF3340'],[.26,'#00843D'],[.5,'#00843D'],[.5,'#FFFFFF'],[.75,'#FFFFFF'],[.75,'#111111'],[1,'#111111']])},
     'United Kingdom':{css:'f-gb',c:'#2B5CE6',g:grad(0,0,1,0,[[0,'#012169'],[.3,'#012169'],[.3,'#FFFFFF'],[.42,'#FFFFFF'],[.42,'#C8102E'],[.58,'#C8102E'],[.58,'#FFFFFF'],[.7,'#FFFFFF'],[.7,'#012169'],[1,'#012169']])},
     'United States':{css:'f-us',c:'#D8344A',g:grad(0,0,0,1,[[0,'#3C3B6E'],[.3,'#3C3B6E'],[.3,'#B22234'],[.44,'#B22234'],[.44,'#FFFFFF'],[.58,'#FFFFFF'],[.58,'#B22234'],[.72,'#B22234'],[.72,'#FFFFFF'],[.86,'#FFFFFF'],[.86,'#B22234'],[1,'#B22234']])},
+    'Qatar':{css:'f-qa',c:'#9B1D45',g:grad(0,0,1,0,[[0,'#FFFFFF'],[.34,'#FFFFFF'],[.34,'#8A1538'],[1,'#8A1538']])},
+    'Bahrain':{css:'f-bh',c:'#E0283C',g:grad(0,0,1,0,[[0,'#FFFFFF'],[.3,'#FFFFFF'],[.3,'#CE1126'],[1,'#CE1126']])},
     'Bangladesh':{css:'f-bd',c:'#1DB37C',g:{type:'radial',x:.45,y:.5,r:.6,global:false,colorStops:[{offset:0,color:'#F42A41'},{offset:.4,color:'#F42A41'},{offset:.42,color:'#006A4E'},{offset:1,color:'#006A4E'}]}}
   };
   var BOUNDS={'United States':[[-126,50],[-66,24]]};
   /* where each flag is stretched over its country (top-left and bottom-right, longitude / latitude) */
-  var BOX={'Malaysia':[[99.6,7.4],[119.3,.85]],'Saudi Arabia':[[34.5,32.2],[55.7,16.3]],'United Arab Emirates':[[51.5,26.1],[56.4,22.6]],'United Kingdom':[[-8.2,58.7],[1.8,49.9]],'United States':[[-125,49.4],[-66.9,24.5]],'Bangladesh':[[88,26.65],[92.7,20.7]]};
+  var BOX={'Malaysia':[[99.6,7.4],[119.3,.85]],'Saudi Arabia':[[34.5,32.2],[55.7,16.3]],'United Arab Emirates':[[51.5,26.1],[56.4,22.6]],'United Kingdom':[[-8.2,58.7],[1.8,49.9]],'United States':[[-125,49.4],[-66.9,24.5]],'Bangladesh':[[88,26.65],[92.7,20.7]],'Qatar':[[50.7,26.2],[51.7,24.5]],'Bahrain':[[50.35,26.3],[50.7,25.78]]};
   var FLAGC={};
   function flagCanvas(n){
     if(FLAGC[n]) return FLAGC[n];
@@ -571,6 +593,9 @@ window.startDashboard=function(){
     else if(n==='United Arab Emirates'){ rect('#00843D',0,0,300,67); rect('#FFFFFF',0,67,300,67); rect('#111111',0,133,300,67); rect('#EF3340',0,0,78,200); }
     else if(n==='United Kingdom'){ rect('#012169',0,0,300,200); line('#FFFFFF',40,0,0,300,200); line('#FFFFFF',40,300,0,0,200); line('#C8102E',14,0,0,300,200); line('#C8102E',14,300,0,0,200); rect('#FFFFFF',117,0,66,200); rect('#FFFFFF',0,67,300,66); rect('#C8102E',130,0,40,200); rect('#C8102E',0,80,300,40); }
     else if(n==='United States'){ for(i=0;i<13;i++) rect(i%2?'#FFFFFF':'#B22234',0,i*200/13,300,200/13+1); rect('#3C3B6E',0,0,120,200*7/13); for(i=0;i<9;i++) for(j=0;j<(i%2?5:6);j++) star('#FFFFFF',(i%2?20:10)+j*20,11+i*11.3,4.4,5); }
+    else if(n==='Qatar'||n==='Bahrain'){ var red=n==='Qatar'?'#8A1538':'#CE1126', pts=n==='Qatar'?9:5, w=n==='Qatar'?100:75, d=n==='Qatar'?24:30;
+      rect(red,0,0,300,200); x.fillStyle='#FFFFFF'; x.beginPath(); x.moveTo(0,0); x.lineTo(w,0);
+      for(i=0;i<pts;i++){ x.lineTo(w+d,(i+.5)*200/pts); x.lineTo(w,(i+1)*200/pts); } x.lineTo(0,200); x.closePath(); x.fill(); }
     else { rect('#006A4E',0,0,300,200); disc('#F42A41',135,100,66); }
     FLAGC[n]=c; return c;
   }
@@ -583,7 +608,7 @@ window.startDashboard=function(){
   }
   var SHORT={'Saudi Arabia':'KSA','United Arab Emirates':'UAE','United Kingdom':'UK','United States':'USA'};
   var CH3=['Bank branch','Bank app','Exchange house','MTO','Remittance app','Hundi','Carried cash','Cash via others','Other'];
-  var CURINFO={GBP:['f-gb','Pound sterling','United Kingdom'],MYR:['f-my','Malaysian ringgit','Malaysia'],AED:['f-ae','UAE dirham','United Arab Emirates'],SAR:['f-sa','Saudi riyal','Saudi Arabia'],USD:['f-us','US dollar','United States'],BDT:['f-bd','Bangladeshi taka','Bangladesh']};
+  var CURINFO={GBP:['f-gb','Pound sterling','United Kingdom'],MYR:['f-my','Malaysian ringgit','Malaysia'],AED:['f-ae','UAE dirham','United Arab Emirates'],SAR:['f-sa','Saudi riyal','Saudi Arabia'],USD:['f-us','US dollar','United States'],QAR:['f-qa','Qatari riyal','Qatar'],BHD:['f-bh','Bahraini dinar','Bahrain'],BDT:['f-bd','Bangladeshi taka','Bangladesh']};
   var has3D=(function(){ try{ var c=document.createElement('canvas'); return !!(c.getContext('webgl')||c.getContext('experimental-webgl')); }catch(e){ return false; } })();
   var mode3D=has3D, mapChart=null, charts=[], DATA=null, R=null, state={country:'all',en:'all',cur:'USD',sex:'all',rcur:null}, range={s:null,q:null};
 
@@ -686,17 +711,17 @@ window.startDashboard=function(){
 
   function bar3D(el, xs, ys, cells, opts){
     opts=opts||{};
-    el.setOption({tooltip:Object.assign({formatter:function(p){ return esc(xs[p.value[0]]).replace(/\n/g,' ')+(ys.length>1?' · '+esc(ys[p.value[1]]):'')+': <b>'+p.value[2]+'</b>'; }},TT),
+    el.setOption({tooltip:Object.assign({formatter:function(p){ return esc(xs[p.value[0]]).replace(/\n/g,' ')+(ys.length>1?' · '+esc(p.seriesName):'')+': <b>'+p.value[2]+'</b>'; }},TT),
       xAxis3D:Object.assign(axis3D(),{type:'category',data:xs,axisLabel:{color:MUTED,fontSize:11,interval:opts.interval}}),
-      yAxis3D:Object.assign(axis3D(),{type:'category',data:ys,axisLabel:{color:MUTED,fontSize:11}}),
+      yAxis3D:Object.assign(axis3D(),{type:'category',data:ys.length>1?['']:ys,axisLabel:{color:MUTED,fontSize:11}}),
       zAxis3D:Object.assign(axis3D(),{type:'value',minInterval:1}),
-      grid3D:{boxWidth:opts.boxWidth||Math.min(220,Math.max(90,xs.length*16)),boxDepth:opts.boxDepth||(ys.length>1?46:22),boxHeight:opts.boxHeight||70,
+      grid3D:{boxWidth:opts.boxWidth||Math.min(220,Math.max(90,xs.length*16)),boxDepth:ys.length>1?22:(opts.boxDepth||22),boxHeight:opts.boxHeight||70,
         environment:'none',light:light(),postEffect:{enable:false},
         viewControl:{alpha:opts.alpha||22,beta:opts.beta||28,distance:opts.distance||210,autoRotate:false,zoomSensitivity:0.6,minAlpha:5,maxAlpha:80},
         axisPointer:{show:false}},
-      series:[{type:'bar3D',shading:'lambert',bevelSize:0.35,bevelSmoothness:3,barSize:opts.barSize,
-        data:cells.map(function(c){return {value:[c[0],c[1],c[2]],itemStyle:{color:c[3],opacity:1}};}),
-        label:{show:false},emphasis:{label:{show:true,formatter:function(p){return p.value[2];},textStyle:{color:'#fff',fontSize:13,backgroundColor:'rgba(6,18,14,.85)',padding:[2,6],borderRadius:3}},itemStyle:{color:'#ffffff'}}}]});
+      series:(ys.length>1?ys:[null]).map(function(y,j){ return {type:'bar3D',name:y||'',stack:ys.length>1?'s':undefined,shading:'lambert',bevelSize:0.35,bevelSmoothness:3,barSize:opts.barSize,
+        data:cells.filter(function(c){return ys.length<2||c[1]===j;}).map(function(c){return {value:[c[0],ys.length>1?0:c[1],c[2]],itemStyle:{color:c[3],opacity:1}};}),
+        label:{show:false},emphasis:{label:{show:true,formatter:function(p){return p.value[2];},textStyle:{color:'#fff',fontSize:13,backgroundColor:'rgba(6,18,14,.85)',padding:[2,6],borderRadius:3}},itemStyle:{color:'#ffffff'}}}; })});
   }
   function formCells(keys, getter){ var cells=[]; keys.forEach(function(k,i){ var g=getter(k)||{}; F.forEach(function(f,j){ cells.push([i,j,g[f]||0,FC[f]]); }); }); return cells; }
   var FY=F.map(function(f){return FN[f];});
@@ -706,7 +731,7 @@ window.startDashboard=function(){
     if(mode3D){ bar3D(ch,labels,FY,formCells(keys,getter),o.g3||{}); return; }
     ch.setOption({tooltip:Object.assign({trigger:'axis',axisPointer:{type:'shadow'}},TT),grid:{left:8,right:12,top:12,bottom:8,containLabel:true},
       xAxis:axis2D({type:'category',data:labels,splitLine:{show:false},axisLabel:{color:MUTED,interval:o.interval===undefined?'auto':o.interval,fontSize:11}}),yAxis:axis2D({type:'value',minInterval:1}),
-      series:F.map(function(f,i){return {name:FN[f],type:'bar',stack:o.stack?'g':undefined,barMaxWidth:o.barMax||26,itemStyle:{color:FC[f],borderRadius:(o.stack&&i===0)?0:[4,4,0,0]},data:keys.map(function(k){return (getter(k)||{})[f]||0;})};})});
+      series:F.map(function(f,i){return {name:FN[f],type:'bar',stack:'g',barMaxWidth:o.barMax||26,itemStyle:{color:FC[f],borderRadius:i===0?0:[4,4,0,0]},data:keys.map(function(k){return (getter(k)||{})[f]||0;})};})});
   }
   function rankBars(id, pairs, o){
     o=o||{}; var ch=mk(id);
@@ -782,14 +807,14 @@ window.startDashboard=function(){
     var t=state.cur, fx=function(v){ return (+v).toLocaleString('en-US',{maximumFractionDigits:v>=100?2:4}); };
     var card=function(c,eq,also){ var i=CURINFO[c]; return '<div class="rate"><div class="top"><span class="flag '+i[0]+'"></span>'+c+' <small>'+i[1]+'</small></div>'+eq+'<div class="also">'+also+'</div></div>'; };
     var html=card('USD','<div class="eq">1 USD = <input type="number" id="fx-BDT" data-k="BDT" min="0" step="any" inputmode="decimal" value="'+(+R.BDT.toFixed(4))+'" aria-label="BDT per 1 USD"> BDT</div>','Bangladesh');
-    ['GBP','MYR','AED','SAR'].forEach(function(c){ var usd=1/R[c], bdt=R.BDT/R[c], v=t==='BDT'?bdt:usd;
+    ['GBP','MYR','AED','SAR','QAR','BHD'].filter(function(c){ return R[c]>0; }).forEach(function(c){ var usd=1/R[c], bdt=R.BDT/R[c], v=t==='BDT'?bdt:usd;
       html+=card(c,'<div class="eq">1 '+c+' = <input type="number" id="fx-'+c+'" data-k="'+c+'" min="0" step="any" inputmode="decimal" value="'+(+v.toFixed(4))+'" aria-label="'+t+' per 1 '+c+'"> '+t+'</div>','= '+fx(usd)+' USD · '+fx(bdt)+' BDT · '+CURINFO[c][2]); });
     $('rates').innerHTML=html; $('fx-note').hidden=!custom(); $('fx-dirty').hidden=true;
   }
   $('rates').addEventListener('input',function(){ $('fx-dirty').hidden=false; $('fx-saved').hidden=true; });
   $('fx-save').addEventListener('click',function(){
     var bdt=parseFloat($('fx-BDT').value), next={USD:1,BDT:bdt>0?bdt:R.BDT};
-    ['GBP','MYR','AED','SAR'].forEach(function(c){ var x=parseFloat($('fx-'+c).value); next[c]=x>0?(state.cur==='BDT'?next.BDT/x:1/x):R[c]; });
+    ['GBP','MYR','AED','SAR','QAR','BHD'].filter(function(c){ return $('fx-'+c); }).forEach(function(c){ var x=parseFloat($('fx-'+c).value); next[c]=x>0?(state.cur==='BDT'?next.BDT/x:1/x):R[c]; });
     R=next; var kept=true; try{ localStorage.setItem('rs-rates',JSON.stringify(R)); }catch(err){ kept=false; }
     draw(); $('fx-saved').textContent=kept?'Saved':'Applied'; $('fx-saved').hidden=false; setTimeout(function(){ $('fx-saved').hidden=true; },2500); });
   $('fx-reset').addEventListener('click',function(){ R=JSON.parse(JSON.stringify(DATA.rates_per_usd)); try{ localStorage.removeItem('rs-rates'); }catch(err){} draw(); });
@@ -834,7 +859,7 @@ window.startDashboard=function(){
       bar3D(ch,names.map(function(n){return wrapLabel(n,14);}),['Male','Female'],cells,{boxWidth:Math.max(130,names.length*30),boxDepth:44,distance:165,beta:24,interval:0}); }
     else ch.setOption({tooltip:Object.assign({trigger:'axis',axisPointer:{type:'shadow'}},TT),grid:{left:8,right:12,top:12,bottom:8,containLabel:true},
       xAxis:axis2D({type:'category',data:names.map(function(n){return wrapLabel(n,14);}),splitLine:{show:false},axisLabel:{color:MUTED,interval:0,fontSize:11}}),yAxis:axis2D({type:'value',minInterval:1}),
-      series:[0,1,2].map(function(k){ return {name:SN[k],type:'bar',barMaxWidth:26,itemStyle:{color:SX[k],borderRadius:[4,4,0,0]},data:by.map(function(r){return r[k];})}; })});
+      series:[0,1,2].map(function(k){ return {name:SN[k],type:'bar',stack:'s',barMaxWidth:26,itemStyle:{color:SX[k],borderRadius:k===2?[4,4,0,0]:0},data:by.map(function(r){return r[k];})}; })});
     var row=function(name,r,flag,bold){ var n=r[0]+r[1]+r[2]; return '<tr'+(bold?' style="font-weight:700"':'')+'><td>'+(flag?'<span class="flag '+flag+'" style="vertical-align:-3px;margin-right:8px"></span>':'')+esc(name)+'</td><td class="num">'+n+'</td><td class="num">'+r[0]+'</td><td class="num">'+r[1]+'</td><td class="num">'+r[2]+'</td><td class="num">'+pc(n?r[1]/n*100:null)+'</td></tr>'; };
     var tot=[0,0,0]; by.forEach(function(r){ tot[0]+=r[0]; tot[1]+=r[1]; tot[2]+=r[2]; });
     $('t-sex').tBodies[0].innerHTML=C.map(function(c,i){ return row(c[1],by[i],(FL[c[1]]||{}).css); }).join('')+row('All countries',tot,'',true);
@@ -908,9 +933,9 @@ window.startDashboard=function(){
   function drawRates(){
     var RR=DATA.rate_rows||[], CH=DATA.rate_channels||[], ci=cidx(), ei=eidx(), gi=gidx();
     var rows=RR.filter(function(r){ return (ci<0||r[3]===ci)&&(ei===-1||r[4]===ei)&&(gi<0||r[5]===gi); });
-    var cnt=[0,0,0,0,0]; rows.forEach(function(r){ if(r[1]<5) cnt[r[1]]++; });
+    var cnt=DATA.currencies.map(function(){return 0;}); rows.forEach(function(r){ if(r[1]!==5) cnt[r[1]]++; }); cnt[5]=-1;
     var cur=state.rcur; if(cur===null||cur===undefined){ cur=0; cnt.forEach(function(n,i){ if(n>cnt[cur]) cur=i; }); }
-    $('rcur').innerHTML=DATA.currencies.slice(0,5).map(function(c,i){ return '<option value="'+i+'"'+(i===cur?' selected':'')+'>'+c+' ('+cnt[i]+')</option>'; }).join('');
+    $('rcur').innerHTML=DATA.currencies.map(function(c,i){ return i===5?'':'<option value="'+i+'"'+(i===cur?' selected':'')+'>'+c+' ('+cnt[i]+')</option>'; }).join('');
     var code=DATA.currencies[cur], per=CH.map(function(){return [];}), all=[];
     rows.forEach(function(r){ if(r[1]!==cur) return; all.push(r[0]); if(per[r[2]]) per[r[2]].push(r[0]); });
     var line=function(name,a,cls){ var ok=a.length>=DATA.min_n, f=function(v){ return v===null?'–':Number(v).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); };
@@ -921,6 +946,40 @@ window.startDashboard=function(){
     moneyBars('c-rate',[['All channels',all.length>=DATA.min_n?mean(all):null]].concat(CH.map(function(l,i){ return [l,per[i].length>=DATA.min_n?mean(per[i]):null]; })),NON);
     state.cur=save;
   }
+
+  /* remittances at a glance, one row per country (click a row to look at that country) */
+  function drawGlance(){
+    var sx=sfx(), C=DATA.countries, sel=state.country;
+    var n=function(o){ return o?Math.round(o.p*o.n/100):0; };
+    var row=function(code,name,flag,v,bold){ if(!v) return ''; var k=v.kpi;
+      return '<tr class="gl'+(code===sel?' on':'')+'" data-c="'+code+'" tabindex="0"'+(bold?' style="font-weight:700"':'')+'><td>'+(flag?'<span class="flag '+flag+'" style="vertical-align:-3px;margin-right:8px"></span>':'')+esc(name)+'</td><td class="num">'+k.sent12.n+'</td><td class="num">'+pc(k.sent12.p)+'</td><td class="num">'+pc(k.formal.p)+'</td><td class="num">'+pc(k.hundi.p)+'</td><td class="num">'+(k.only_hundi?n(k.only_hundi):'–')+'</td><td class="num">'+pc(k.carry.p)+'</td><td class="num">'+pc(k.aware.p)+'</td></tr>'; };
+    $('t-glance').tBodies[0].innerHTML=C.map(function(c){ return row(c[0],c[1],(FL[c[1]]||{}).css,DATA.views[c[0]+sx]); }).join('')+row('all','All countries','',DATA.views['all'+sx],true);
+  }
+  $('t-glance').addEventListener('click',function(e){ var tr=e.target.closest('tr.gl'); if(tr) setCountry(tr.getAttribute('data-c')); });
+  $('t-glance').addEventListener('keydown',function(e){ var tr=e.target.closest('tr.gl'); if(tr&&(e.key==='Enter'||e.key===' ')){ e.preventDefault(); setCountry(tr.getAttribute('data-c')); } });
+
+  /* survey progress against targets you can edit (kept in this browser) */
+  var TG=null;
+  function targets(){ if(TG) return TG; TG={}; Object.keys(DATA.targets||{}).forEach(function(k){ TG[k]=DATA.targets[k]; });
+    try{ var mine=JSON.parse(localStorage.getItem('rs-targets')||'null'); if(mine) Object.keys(mine).forEach(function(k){ TG[k]=mine[k]; }); }catch(e){} return TG; }
+  function drawTargets(){
+    var T=targets(), all=DATA.views.all, C=DATA.countries, sumT=0, sumD=0, sel=state.country;
+    var bar=function(done,t){ if(!(t>0)) return '<span class="muted">Set a target</span>'; var p=done/t*100;
+      return '<div class="pbar"><i style="width:'+Math.min(100,p)+'%"></i></div><b>'+(p>=10?Math.round(p):p.toFixed(1))+'%</b>'; };
+    var inp=function(k,v,ph){ return '<input type="number" min="0" step="1" inputmode="numeric" data-k="'+k+'" value="'+(v>0?v:'')+'" placeholder="'+(ph||'')+'" aria-label="Target">'; };
+    var rows=C.map(function(c){ var done=all.country[c[1]]||0, t=+T[c[0]]||0; sumD+=done; if(t>0) sumT+=t;
+      return '<tr'+(c[0]===sel?' class="on"':'')+'><td><span class="flag '+((FL[c[1]]||{}).css||'')+'" style="vertical-align:-3px;margin-right:8px"></span>'+esc(c[1])+'</td><td class="num">'+done+'</td><td class="num">'+inp(c[0],t)+'</td><td class="num">'+(t>0?Math.max(0,t-done):'–')+'</td><td class="prog">'+bar(done,t)+'</td></tr>'; }).join('');
+    var every=C.every(function(c){ return +T[c[0]]>0; }), tAll=+T.all>0?+T.all:(every?sumT:0);
+    rows+='<tr style="font-weight:700"><td>All countries</td><td class="num">'+sumD+'</td><td class="num">'+inp('all',+T.all||0,every?String(sumT):'')+'</td><td class="num">'+(tAll>0?Math.max(0,tAll-sumD):'–')+'</td><td class="prog">'+bar(sumD,tAll)+'</td></tr>';
+    $('t-target').tBodies[0].innerHTML=rows; $('tg-dirty').hidden=true;
+    var ci=cidx(), dn=ci<0?sumD:(all.country[C[ci][1]]||0), tt=ci<0?tAll:(+T[C[ci][0]]||0);
+    $('k-done').textContent=tt>0?Math.round(dn/tt*100)+'%':'–'; $('k-done-n').textContent=dn+(tt>0?' of '+tt:' · no target');
+  }
+  $('t-target').addEventListener('input',function(){ $('tg-dirty').hidden=false; $('tg-saved').hidden=true; });
+  $('tg-save').addEventListener('click',function(){ var T=targets();
+    [].forEach.call(document.querySelectorAll('#t-target input'),function(i){ var v=parseInt(i.value,10); if(v>0) T[i.getAttribute('data-k')]=v; else delete T[i.getAttribute('data-k')]; });
+    try{ localStorage.setItem('rs-targets',JSON.stringify(T)); }catch(e){}
+    drawTargets(); $('tg-saved').hidden=false; });
 
   /* ---------- everything ---------- */
   function draw(){
@@ -957,10 +1016,12 @@ window.startDashboard=function(){
       tile('Median income last month',money(inc.v),inc.n+' answers')+
       tile('Used a formal channel',pc(k.formal.p),'of '+k.formal.n+' senders')+
       tile('Used hundi',pc(k.hundi.p),'of '+k.hundi.n+' senders')+
+      tile('Used only hundi',k.only_hundi?Math.round(k.only_hundi.p*k.only_hundi.n/100):'–','senders, no other channel · '+(k.only_hundi?pc(k.only_hundi.p):'–'))+
       tile('Cash carried or sent by hand',pc(k.carry.p),'of '+k.carry.n+' senders')+
       tile('Median sender fee',pc(fee.v),'of amount sent · '+fee.n+' answers')+
       tile('Aware of 2.5% incentive',pc(k.aware.p),'of '+k.aware.n+' respondents');
 
+    drawGlance();
     var chn=d.channels, idx=chn.map(function(c,i){return i;}), ci=cidx(), EI=eidx(), total=0;
     var amt=DATA.channel_amounts.map(function(rows){ var a=rows.filter(function(r){return (ci<0||r[2]===ci)&&(EI===-1||r[4]===EI)&&(gidx()<0||r[5]===gidx());}).map(function(r){return toShow(r[0],r[1]);}); var s=a.reduce(function(p,c){return p+c;},0); total+=s; return {a:a,s:s}; });
     formBars('c-chan',idx,chn.map(function(c,i){return mode3D?(CH3[i]||c.label):wrapLabel(c.label,16);}),function(i){return chn[i];},{stack:true,interval:0,barMax:34,g3:{boxWidth:240,boxDepth:40,alpha:20,beta:14,distance:170,interval:0}});
@@ -983,7 +1044,7 @@ window.startDashboard=function(){
     var places=Object.keys(d.place);
     formBars('c-area',places,places.map(function(n){return wrapLabel(n,18);}),function(k){return d.place[k];},{interval:0,barMax:30,g3:{boxWidth:150,boxDepth:44,distance:175,beta:22,interval:0}});
 
-    drawCompare(); drawRates(); drawStatsList(); drawAnswersList(); drawTrend(d);
+    drawCompare(); drawRates(); drawTargets(); drawStatsList(); drawAnswersList(); drawTrend(d);
 
     var row=function(e,full){ return '<tr><td>'+esc(e.name)+'</td><td class="num">'+e.interviews+'</td><td class="num">'+(e.today||'')+'</td>'+(full?'<td class="num">'+(e.partial||'')+'</td><td class="num">'+(e.flags?'<span class="pill warn">'+e.flags+'</span>':'')+'</td>':'')+'<td>'+(e.last?esc(fmtDay(e.last)):'–')+'</td></tr>'; };
     drawMatrix(); drawSex();
