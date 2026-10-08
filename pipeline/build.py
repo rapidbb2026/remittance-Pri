@@ -319,8 +319,8 @@ def text_top(values, aliases, limit=15):
     return rows[:limit]
 
 
-CUR = ["GBP", "MYR", "USD", "AED", "SAR", "BDT"]
-CUR_IDX = {1: 0, 2: 1, 3: 2, 4: 3, 5: 4, "BDT": 5}
+CUR = ["GBP", "MYR", "USD", "AED", "SAR", "BDT", "QAR", "BHD"]
+CUR_IDX = {1: 0, 2: 1, 3: 2, 4: 3, 5: 4, "BDT": 5, 6: 6, 7: 7}
 
 
 def sex_of(c):
@@ -607,7 +607,8 @@ def view(sub, cfg, D, forms, today):
         "supervisors": staff("Supervisor", "SUPERNAME", sup_names),
         "issues": issues[:300], "issues_total": len(issues),
         "kpi": {"sent12": pct(lambda v: v.get("C1") == 1, lambda v: v.get("C1") is not None),
-                "formal": pct(used(FORMAL), asked), "hundi": pct(used(["06"]), asked), "carry": pct(used(["07", "08"]), asked),
+                "formal": pct(used(FORMAL), asked), "hundi": pct(used(["06"]), asked),
+                "only_hundi": pct(lambda v: v.get("D1_06_USED") == 1 and not any(v.get(f"D1_{k}_USED") == 1 for k, _ in CHANNELS if k != "06"), asked), "carry": pct(used(["07", "08"]), asked),
                 "aware": pct(lambda v: v.get("E3") == 1, lambda v: v.get("E3") is not None)},
         "channels": [{k: v for k, v in row.items() if k not in ("med", "share")} for row in ch_rows],
         "trust": trust, "rates": rates,
@@ -675,12 +676,26 @@ def main():
             items = read_dictionary(live)["items"]
         except Exception:
             continue
-        for field in ("SUPERNAME", "INTNAME"):
+        cur_fields = [k for k, it in items.items() if k in D and D[k].get("values") == D["B9_02"]["values"] and k != "B9_02"] + ["B9_02"]
+        for field in ("SUPERNAME", "INTNAME", "DES_COUNTRY_NAME", *cur_fields):
+            if field not in D:
+                continue
             known = {c for c, _ in D[field]["values"]}
             for code, lab in items.get(field, {}).get("values", []):
                 if code not in known and not re.search(r"[\u0980-\u09ff]", lab):
                     D[field]["values"].append((code, lab))
                     known.add(code)
+
+    # countries and currencies added to the survey later (settings.json), if no dictionary lists them yet
+    cur_items = [k for k, it in D.items() if it.get("values") and [c for c, _ in it["values"]][:5] == [1, 2, 3, 4, 5]
+                 and "Ringgit" in dict(it["values"]).get(2, "")]
+    names = {lab for _, lab in D["DES_COUNTRY_NAME"]["values"]}
+    for code, lab in cfg.get("extra_countries", {}).items():
+        if lab not in names and int(code) not in {c for c, _ in D["DES_COUNTRY_NAME"]["values"]}:
+            D["DES_COUNTRY_NAME"]["values"].append((int(code), lab))
+    for k in cur_items:
+        have = {c for c, _ in D[k]["values"]}
+        D[k]["values"] += [(int(c), lab) for c, lab in cfg.get("extra_currencies", {}).items() if int(c) not in have]
 
     # team list from settings.json: names here win over the dictionary
     roster, team_of = [], {}

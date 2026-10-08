@@ -24,7 +24,7 @@ CHANNELS = [
 ]
 FORMAL = ["01", "02", "03", "04", "05"]
 
-CURRENCIES = {1: "GBP", 2: "MYR", 3: "USD", 4: "AED", 5: "SAR"}
+CURRENCIES = {1: "GBP", 2: "MYR", 3: "USD", 4: "AED", 5: "SAR", 6: "QAR", 7: "BHD"}
 
 MODULES = [
     ("A", "Respondent and household", [
