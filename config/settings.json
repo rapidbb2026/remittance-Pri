@@ -27,7 +27,9 @@
     "GBP": 0.75,
     "MYR": 4.2,
     "AED": 3.6725,
-    "SAR": 3.75
+    "SAR": 3.75,
+    "QAR": 3.64,
+    "BHD": 0.376
   },
   "recodes": {
     "D12_STATUS": {
@@ -46,7 +48,9 @@
     "102": 5,
     "103": 4,
     "104": 1,
-    "105": 3
+    "105": 3,
+    "106": 6,
+    "107": 7
   },
   "rate_check_tolerance": 0.3,
   "targets": {
@@ -54,7 +58,9 @@
     "102": null,
     "103": null,
     "104": null,
-    "105": null
+    "105": null,
+    "106": null,
+    "107": null
   },
   "results_include_reopened": true,
   "privacy": {
@@ -255,5 +261,14 @@
       ],
       "country": 101
     }
-  ]
+  ],
+  "extra_countries_note": "Used only if the dictionary does not list these codes yet. If your CSPro dictionary gives Qatar or Bahrain different codes, the dictionary wins and these are ignored for those names.",
+  "extra_countries": {
+    "106": "Qatar",
+    "107": "Bahrain"
+  },
+  "extra_currencies": {
+    "6": "Qatari Riyal (QAR)",
+    "7": "Bahraini Dinar (BHD)"
+  }
 }
