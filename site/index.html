@@ -116,6 +116,8 @@ header .sub{margin:2px 0 0;color:var(--muted);font-size:.9rem}
 .pbar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#2C9E8C,#F2CC6B)}
 .kpi .note{font-size:.78rem;color:var(--muted);margin-top:2px}
 .muted{color:var(--muted)}
+.tp{font:700 .72rem var(--mono);padding:1px 6px;border-radius:999px;background:rgba(91,227,154,.14);color:var(--ok);margin-left:2px}
+.chip[aria-pressed="true"] .tp{background:rgba(28,21,3,.18);color:#1C1503}
 .f-bd{background:radial-gradient(circle at 45% 50%,#F42A41 0 33%,#006A4E 35%)}
 .keys{display:flex;gap:14px;font-size:.8rem;color:var(--muted);margin-left:auto;align-self:center;flex-wrap:wrap}
 .keys i,.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
@@ -153,6 +155,9 @@ header .sub{margin:2px 0 0;color:var(--muted);font-size:.9rem}
 .legend{display:flex;gap:14px;flex-wrap:wrap;margin:6px 0 4px;font-size:.8rem;color:var(--muted)}
 
 .tbl{overflow-x:auto}
+.tbl>table>thead th{white-space:normal;vertical-align:bottom;line-height:1.35;min-width:74px;max-width:150px}
+.tbl>table>thead th:first-child{min-width:150px}
+.tbl>table>tbody td:first-child{white-space:nowrap}
 table{width:100%;border-collapse:collapse;font-size:.9rem}
 th{text-align:left;font-weight:700;color:var(--muted);font-size:.7rem;text-transform:uppercase;letter-spacing:.07em;border-bottom:1px solid var(--line);padding:6px 8px 6px 0;white-space:nowrap}
 td{border-bottom:1px solid rgba(31,66,52,.7);padding:7px 8px 7px 0;vertical-align:middle}
@@ -206,7 +211,18 @@ td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:now
 .outl button:hover{background:rgba(255,138,122,.45);color:#fff}
 .outl button.x{background:rgba(255,138,122,.3);color:#FFD9D2}
 #case{width:min(860px,calc(100vw - 24px));max-height:88vh;padding:0;border:1px solid var(--line2);border-radius:16px;background:var(--bg2);color:var(--ink);overflow:hidden}
-#case[open]{display:flex;flex-direction:column}
+#case[open],#clist[open]{display:flex;flex-direction:column}
+#clist{width:min(1000px,calc(100vw - 24px));max-height:88vh;padding:0;border:1px solid var(--line2);border-radius:16px;background:var(--bg2);color:var(--ink);overflow:hidden}
+#clist::backdrop{background:rgba(2,10,7,.72);backdrop-filter:blur(3px)}
+#clist-body{overflow:auto;padding:0 18px 18px}
+#clist-body table{width:100%;border-collapse:collapse;font-size:.88rem}
+#clist-body th{position:sticky;top:0;background:var(--bg2);text-align:left;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:10px 8px 8px 0;border-bottom:1px solid var(--line)}
+#clist-body td{padding:8px 8px 8px 0;border-bottom:1px solid var(--line)}
+#clist-body tr.cr{cursor:pointer}
+#clist-body tr.cr:hover td{background:rgba(255,255,255,.04)}
+#clist-body td.id{font-family:var(--mono);color:var(--gold)}
+#clist-q{background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:7px 10px;width:min(220px,40vw)}
+#case{z-index:2}
 #case::backdrop{background:rgba(2,10,7,.72);backdrop-filter:blur(3px)}
 .casehd{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--line)}
 #case-body{overflow:auto;padding:0 18px 18px}
@@ -290,11 +306,11 @@ footer{color:var(--faint);font-size:.8rem}
   <section class="card">
     <div class="ratebar" style="justify-content:space-between"><h2 style="margin:0">Completed against target</h2>
       <span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="pill warn" id="tg-dirty" hidden>Not saved yet</span><span class="pill ok" id="tg-saved" hidden>Saved</span><button class="save" id="tg-save" type="button">Save targets</button></span></div>
-    <div class="tbl"><table id="t-target"><thead><tr><th>Country</th><th class="num">Completed</th><th class="num">Target</th><th class="num">Remaining</th><th>Done</th></tr></thead><tbody></tbody></table></div>
+    <div class="tbl"><table id="t-target"><thead><tr><th>Country</th><th class="num">Completed interviews</th><th class="num">Target</th><th class="num">Still to do</th><th>% of target done</th></tr></thead><tbody></tbody></table></div>
   </section>
 
   <section class="card">
-    <h2 id="map-title">Interviews by destination country</h2>
+    <div class="ratebar" style="justify-content:space-between;margin:0"><h2 id="map-title" style="margin:0">Interviews by destination country</h2><button class="out" id="map-cases" type="button" hidden>See all cases</button></div>
     <div class="maprow">
       <div class="chart" id="c-map"></div>
       <ul class="rank" id="rank"></ul>
@@ -323,13 +339,13 @@ footer{color:var(--faint);font-size:.8rem}
     <h2>Male and female respondents</h2>
     <div class="legend"><span><i style="background:#5AA9E6"></i>Male</span><span><i style="background:#F08BB4"></i>Female</span><span><i style="background:#8C9F96"></i>Other</span></div>
     <div class="chart" id="c-sex" style="height:280px"></div>
-    <div class="tbl"><table id="t-sex"><thead><tr><th>Country</th><th class="num">Respondents</th><th class="num">Male</th><th class="num">Female</th><th class="num">Other</th><th class="num">Female share</th></tr></thead><tbody></tbody></table></div>
+    <div class="tbl"><table id="t-sex"><thead><tr><th>Country</th><th class="num">All respondents</th><th class="num">Male</th><th class="num">Female</th><th class="num">Other</th><th class="num">Female %</th></tr></thead><tbody></tbody></table></div>
   </section>
 
   <section class="card">
     <h2>Remittances at a glance</h2>
     <div class="stiles" id="money"></div>
-    <div class="tbl" style="margin-top:14px"><table id="t-glance"><thead><tr><th>Country</th><th class="num">Respondents</th><th class="num">Sent in 12 months</th><th class="num">Formal channel</th><th class="num">Hundi</th><th class="num">Only hundi</th><th class="num">Cash by hand</th><th class="num">Aware of incentive</th></tr></thead><tbody></tbody></table></div>
+    <div class="tbl" style="margin-top:14px"><table id="t-glance"><thead><tr><th>Country</th><th class="num">Respondents asked</th><th class="num">Sent money in 12 months (%)</th><th class="num">Used a formal channel (%)</th><th class="num">Used hundi (%)</th><th class="num">Used only hundi (number)</th><th class="num">Sent cash by hand (%)</th><th class="num">Aware of 2.5% incentive (%)</th></tr></thead><tbody></tbody></table></div>
   </section>
 
   <section class="card" id="fx">
@@ -348,38 +364,41 @@ footer{color:var(--faint);font-size:.8rem}
   <section class="card">
     <h2>Last transaction by country</h2>
     <div class="chart" id="c-last" style="height:300px"></div>
-    <div class="tbl"><table id="t-last"><thead><tr><th>Country</th><th class="num">Answers</th><th class="num" id="th-last-a">Average sent</th><th class="num" id="th-last-m">Median sent</th><th class="num">Knew amount received</th><th class="num" id="th-last-s2">Their average sent</th><th class="num" id="th-last-r">Their average received</th><th class="num">Average fee share</th></tr></thead><tbody></tbody></table></div>
+    <h3 class="sub2" style="margin-top:14px">Amount sent</h3>
+    <div class="tbl"><table id="t-last"><thead><tr><th>Country</th><th class="num">Answers</th><th class="num" id="th-last-a">Average sent</th><th class="num" id="th-last-m">Median sent</th><th class="num">Fee as % of amount sent</th></tr></thead><tbody></tbody></table></div>
+    <h3 class="sub2" style="margin-top:18px">Sent compared with received · only respondents who gave both amounts</h3>
+    <div class="tbl"><table id="t-last2"><thead><tr><th>Country</th><th class="num">Respondents</th><th class="num" id="th-last-s2">Average sent</th><th class="num" id="th-last-r">Average received</th><th class="num">Difference</th><th class="num">Rate they got</th><th class="num">Rate used on this page</th></tr></thead><tbody></tbody></table></div>
   </section>
 
   <section class="card">
     <div style="display:flex;flex-wrap:wrap;gap:10px 16px;align-items:flex-end;justify-content:space-between"><h2 id="h-rate" style="margin:0">Exchange rate received, by channel</h2><div class="sel"><label for="rcur">Currency sent</label><select id="rcur" style="min-width:150px"></select></div></div>
     <div class="chart" id="c-rate" style="height:300px"></div>
-    <div class="tbl"><table id="t-rch"><thead><tr><th>Channel</th><th class="num">Answers</th><th class="num">Average</th><th class="num">Median</th><th class="num">Mode</th></tr></thead><tbody></tbody></table></div>
+    <div class="tbl"><table id="t-rch"><thead><tr><th>Channel</th><th class="num">Gave a rate</th><th class="num">Average rate</th><th class="num">Median rate</th><th class="num">Most common rate</th></tr></thead><tbody></tbody></table></div>
   </section>
 
   <div class="grid2">
     <section class="card">
       <h2>Average income by country</h2>
       <div class="chart" id="c-inc-c" style="height:300px"></div>
-      <div class="tbl"><table id="t-inc-c"><thead><tr><th>Country</th><th class="num">Answers</th><th class="num">Average</th><th class="num">Median</th></tr></thead><tbody></tbody></table></div>
+      <div class="tbl"><table id="t-inc-c"><thead><tr><th>Country</th><th class="num">Gave income</th><th class="num">Average income</th><th class="num">Median income</th></tr></thead><tbody></tbody></table></div>
     </section>
     <section class="card">
       <h2 id="h-inc-j">Average income by profession</h2>
       <div class="chart" id="c-inc-j" style="height:300px"></div>
-      <div class="tbl"><table id="t-inc-j"><thead><tr><th>Profession</th><th class="num">Answers</th><th class="num">Average</th><th class="num">Median</th></tr></thead><tbody></tbody></table></div>
+      <div class="tbl"><table id="t-inc-j"><thead><tr><th>Profession</th><th class="num">Gave income</th><th class="num">Average income</th><th class="num">Median income</th></tr></thead><tbody></tbody></table></div>
     </section>
   </div>
 
   <section class="card">
     <h2>Hundi by country</h2>
     <div class="chart" id="c-hundi" style="height:300px"></div>
-    <div class="tbl"><table id="t-hundi"><thead><tr><th>Country</th><th class="num">Senders asked</th><th class="num">Used hundi</th><th class="num">Share</th><th class="num">Average sent by hundi</th><th class="num">Median</th><th class="num">Average times</th></tr></thead><tbody></tbody></table></div>
+    <div class="tbl"><table id="t-hundi"><thead><tr><th>Country</th><th class="num">Senders asked</th><th class="num">Used hundi</th><th class="num">% who used hundi</th><th class="num">Average sent via hundi</th><th class="num">Median sent via hundi</th><th class="num">Average times via hundi</th></tr></thead><tbody></tbody></table></div>
   </section>
 
   <section class="card">
     <h2>Channels used in the past 12 months</h2>
     <div class="chart" id="c-chan" style="height:340px"></div>
-    <div class="tbl"><table id="t-chan"><thead><tr><th>Channel</th><th class="num">Used it</th><th class="num">Users</th><th class="num">Median times</th><th class="num" id="th-avg">Average amount</th><th class="num" id="th-med">Median amount</th><th class="num" id="th-tot">Total amount</th><th class="num">Share of money</th></tr></thead><tbody></tbody></table></div>
+    <div class="tbl"><table id="t-chan"><thead><tr><th>Channel</th><th class="num">% of senders who used it</th><th class="num">Senders who used it</th><th class="num">Median times used</th><th class="num" id="th-avg">Average amount per user</th><th class="num" id="th-med">Median amount per user</th><th class="num" id="th-tot">Total amount</th><th class="num">% of all money sent</th></tr></thead><tbody></tbody></table></div>
   </section>
 
   <section class="card">
@@ -415,7 +434,7 @@ footer{color:var(--faint);font-size:.8rem}
         <div class="chart" id="c-box" style="height:170px"></div>
         <div class="outl" id="s-olist"></div>
         <h3 class="sub2" style="margin-top:14px">By questionnaire</h3>
-        <div class="tbl"><table id="t-grp"><thead><tr><th>Questionnaire</th><th class="num">n</th><th class="num">Mean</th><th class="num">Median</th></tr></thead><tbody></tbody></table></div>
+        <div class="tbl"><table id="t-grp"><thead><tr><th>Questionnaire</th><th class="num">Answers</th><th class="num">Average</th><th class="num">Median</th></tr></thead><tbody></tbody></table></div>
       </div>
     </div>
   </section>
@@ -452,7 +471,7 @@ footer{color:var(--faint);font-size:.8rem}
   <div class="grid2">
     <section class="card">
       <h2>Exchange rates respondents reported</h2>
-      <div class="tbl"><table id="t-rate"><thead><tr><th>Currency</th><th class="num">Last transaction</th><th class="num">Hundi</th></tr></thead><tbody></tbody></table></div>
+      <div class="tbl"><table id="t-rate"><thead><tr><th>Currency</th><th class="num">Last transaction rate (median)</th><th class="num">Hundi rate (median)</th></tr></thead><tbody></tbody></table></div>
     </section>
     <section class="card">
       <h2>Providers named</h2>
@@ -466,6 +485,7 @@ footer{color:var(--faint);font-size:.8rem}
   </section>
 
   <footer id="foot"></footer>
+  <dialog id="clist" aria-labelledby="clist-title"><div class="casehd"><h2 id="clist-title" style="margin:0"></h2><span style="display:flex;gap:8px;align-items:center"><input id="clist-q" type="search" placeholder="Find ID or interviewer" aria-label="Find a case"><button type="button" class="out" id="clist-x">Close</button></span></div><div id="clist-body"></div></dialog>
   <dialog id="case" aria-labelledby="case-title"><div class="casehd"><h2 id="case-title" style="margin:0"></h2><button type="button" class="out" id="case-x">Close</button></div><div id="case-body"></div></dialog>
 </div>
 </div>
@@ -788,10 +808,11 @@ window.startDashboard=function(){
           itemStyle:{areaColor:ZERO,borderColor:EDGE,borderWidth:0.6},emphasis:{label:{color:'#fff'},itemStyle:{areaColor:'#1F4234'}},select:{disabled:true},data:d2}]});
       paintFlags(ch,d2);
     }
-    ch.on('click',function(p){ var c=DATA.countries.filter(function(x){return x[1]===p.name;})[0]; if(c&&!sel) setCountry(c[0]); });
+    ch.on('click',function(p){ var c=DATA.countries.filter(function(x){return x[1]===p.name;})[0]; if(!c) return; if(!sel) setCountry(c[0]); else if(p.name===sel) showList(); });
+    $('map-cases').hidden=!sel;
     var list=names.slice().sort(function(a,b){return (all.country[b]||0)-(all.country[a]||0);});
-    $('rank').innerHTML=list.map(function(n){ var c=all.country[n]||0, g=all.country_form[n]||{}, code=DATA.countries.filter(function(x){return x[1]===n;})[0][0], t=DATA.targets[code];
-      return '<li class="'+(c?'':'zero')+(sel===n?' on':'')+'" data-c="'+code+'" tabindex="0" role="button"><span class="flag '+((FL[n]||{}).css||'')+'"></span><span class="nm">'+esc(n)+'</span><span class="ct">'+c+(t?' / '+t:'')+'</span>'+
+    $('rank').innerHTML=list.map(function(n){ var c=all.country[n]||0, g=all.country_form[n]||{}, code=DATA.countries.filter(function(x){return x[1]===n;})[0][0], t=+targets()[code]||0;
+      return '<li class="'+(c?'':'zero')+(sel===n?' on':'')+'" data-c="'+code+'" tabindex="0" role="button"><span class="flag '+((FL[n]||{}).css||'')+'"></span><span class="nm">'+esc(n)+'</span><span class="ct">'+c+(t?' / '+t:'')+(t?' <span class="tp">'+Math.round(c/t*100)+'%</span>':'')+'</span>'+
         '<span class="sp"><span style="color:'+BEN+'">Bangla '+(g.bn||0)+'</span> · <span style="color:'+NON+'">English '+(g.en||0)+'</span>'+(t?' · '+Math.round(c/t*100)+'% of target':'')+'</span></li>'; }).join('');
   }
   function rankFallback(ch,names,all){ var rev=names.slice().sort(function(a,b){return (all.country[a]||0)-(all.country[b]||0);});
@@ -871,7 +892,8 @@ window.startDashboard=function(){
   function mean(a){ return a.length?a.reduce(function(p,c){return p+c;},0)/a.length:null; }
   function stat(a){ var ok=a.length>=DATA.min_n; return {n:a.length,avg:ok?mean(a):null,med:ok?median(a):null}; }
   /* one bar per row, values shown as money */
-  function moneyBars(id,rows,color){
+  var MONEYF=money;
+  function moneyBars(id,rows,color,fmt){ var money=fmt||MONEYF;
     var have=rows.filter(function(r){return r[1]!==null;});
     $(id).style.height=(mode3D?300:Math.max(300,have.length*34+50))+'px';
     var ch=mk(id);
@@ -903,10 +925,16 @@ window.startDashboard=function(){
     /* last transaction */
     var d6=by('D6'), fee=by('FEE_PCT'), ps=C.map(function(){return [];}), pr=C.map(function(){return [];});
     (DATA.last_pairs||[]).forEach(function(r){ if(r[3]<0) return; if(ei!==-1&&r[4]!==ei) return; if(gi>=0&&r[5]!==gi) return; ps[r[3]].push(toShow(r[0],r[1])); pr[r[3]].push(toShow(r[2],5)); });
-    var last=C.map(function(c,i){ return {name:c[1],s:stat(d6[i]),p:stat(ps[i]),r:stat(pr[i]),f:stat(fee[i])}; });
+    var rt=C.map(function(){return {};});
+    (DATA.last_pairs||[]).forEach(function(r){ if(r[3]<0||!r[0]) return; if(ei!==-1&&r[4]!==ei) return; if(gi>=0&&r[5]!==gi) return; (rt[r[3]][r[1]]=rt[r[3]][r[1]]||[]).push(r[2]/r[0]); });
+    var last=C.map(function(c,i){ var cur=null; Object.keys(rt[i]).forEach(function(k){ if(cur===null||rt[i][k].length>rt[i][cur].length) cur=k; });
+      var a=cur===null?[]:rt[i][cur], code=cur===null?'':DATA.currencies[cur];
+      return {name:c[1],s:stat(d6[i]),p:stat(ps[i]),r:stat(pr[i]),f:stat(fee[i]),code:code,rate:a.length>=DATA.min_n?mean(a):null,used:code?R.BDT/R[code]:null}; });
     moneyBars('c-last',last.map(function(x){return [x.name,x.s.avg];}),BEN);
-    $('th-last-a').textContent='Average sent ('+state.cur+')'; $('th-last-m').textContent='Median sent ('+state.cur+')'; $('th-last-s2').textContent='Their average sent ('+state.cur+')'; $('th-last-r').textContent='Their average received ('+state.cur+')';
-    $('t-last').tBodies[0].innerHTML=last.map(function(x,i){ return '<tr'+onRow(i)+'><td><span class="flag '+((FL[x.name]||{}).css||'')+'" style="vertical-align:-3px;margin-right:8px"></span>'+esc(x.name)+'</td><td class="num">'+x.s.n+'</td><td class="num">'+money(x.s.avg)+'</td><td class="num">'+money(x.s.med)+'</td><td class="num">'+x.r.n+'</td><td class="num">'+money(x.p.avg)+'</td><td class="num">'+money(x.r.avg)+'</td><td class="num">'+pc(x.f.avg)+'</td></tr>'; }).join('');
+    $('th-last-a').textContent='Average sent ('+state.cur+')'; $('th-last-m').textContent='Median sent ('+state.cur+')'; $('th-last-s2').textContent='Average sent ('+state.cur+')'; $('th-last-r').textContent='Average received ('+state.cur+')';
+    var cty=function(x){ return '<td><span class="flag '+((FL[x.name]||{}).css||'')+'" style="vertical-align:-3px;margin-right:8px"></span>'+esc(x.name)+'</td>'; };
+    $('t-last').tBodies[0].innerHTML=last.map(function(x,i){ return '<tr'+onRow(i)+'>'+cty(x)+'<td class="num">'+x.s.n+'</td><td class="num">'+money(x.s.avg)+'</td><td class="num">'+money(x.s.med)+'</td><td class="num">'+pc(x.f.avg)+'</td></tr>'; }).join('');
+    $('t-last2').tBodies[0].innerHTML=last.map(function(x,i){ return '<tr'+onRow(i)+'>'+cty(x)+'<td class="num">'+x.r.n+'</td><td class="num">'+money(x.p.avg)+'</td><td class="num">'+money(x.r.avg)+'</td><td class="num">'+(x.p.avg&&x.r.avg!==null?(Math.abs(x.r.avg/x.p.avg-1)<.0005?'0%':(x.r.avg>x.p.avg?'+':'')+pc((x.r.avg/x.p.avg-1)*100)):'–')+'</td><td class="num">'+(x.rate===null?'–':num(x.rate,2)+' <small style="color:var(--muted)">BDT/'+x.code+'</small>')+'</td><td class="num">'+(x.used===null?'–':num(x.used,2))+'</td></tr>'; }).join('');
     /* income by country */
     var inc=by('B9').map(function(a,i){ return {name:C[i][1],s:stat(a)}; });
     moneyBars('c-inc-c',inc.map(function(x){return [x.name,x.s.avg];}),NON);
@@ -942,9 +970,7 @@ window.startDashboard=function(){
       return '<tr'+(cls?' style="background:rgba(233,185,73,.08);font-weight:700"':'')+'><td>'+esc(name)+'</td><td class="num">'+a.length+'</td><td class="num">'+f(ok?mean(a):null)+'</td><td class="num">'+f(ok?median(a):null)+'</td><td class="num">'+f(ok?modeOf(a):null)+'</td></tr>'; };
     $('h-rate').textContent='Exchange rate received, by channel · BDT per 1 '+code;
     $('t-rch').tBodies[0].innerHTML=line('All channels',all,1)+CH.map(function(l,i){ return per[i].length?line(l,per[i]):''; }).join('');
-    var save=state.cur; state.cur='USD';
-    moneyBars('c-rate',[['All channels',all.length>=DATA.min_n?mean(all):null]].concat(CH.map(function(l,i){ return [l,per[i].length>=DATA.min_n?mean(per[i]):null]; })),NON);
-    state.cur=save;
+    moneyBars('c-rate',[['All channels',all.length>=DATA.min_n?mean(all):null]].concat(CH.map(function(l,i){ return [l,per[i].length>=DATA.min_n?mean(per[i]):null]; })),NON,function(v){ return v===null||v===undefined?'–':Number(v).toLocaleString('en-US',{maximumFractionDigits:2}); });
   }
 
   /* remittances at a glance, one row per country (click a row to look at that country) */
@@ -972,11 +998,14 @@ window.startDashboard=function(){
     var every=C.every(function(c){ return +T[c[0]]>0; }), tAll=+T.all>0?+T.all:(every?sumT:0);
     rows+='<tr style="font-weight:700"><td>All countries</td><td class="num">'+sumD+'</td><td class="num">'+inp('all',+T.all||0,every?String(sumT):'')+'</td><td class="num">'+(tAll>0?Math.max(0,tAll-sumD):'–')+'</td><td class="prog">'+bar(sumD,tAll)+'</td></tr>';
     $('t-target').tBodies[0].innerHTML=rows; $('tg-dirty').hidden=true;
+    [].forEach.call(document.querySelectorAll('.chip[data-c]'),function(b){ var k=b.getAttribute('data-c'), s=b.querySelector('.tp');
+      var done=k==='all'?sumD:(all.country[(C.filter(function(c){return c[0]===k;})[0]||[])[1]]||0), t=k==='all'?tAll:(+T[k]||0);
+      if(!(t>0)){ if(s) s.remove(); return; } if(!s){ s=document.createElement('span'); s.className='tp'; b.appendChild(s); } s.textContent=Math.round(done/t*100)+'%'; });
     var ci=cidx(), dn=ci<0?sumD:(all.country[C[ci][1]]||0), tt=ci<0?tAll:(+T[C[ci][0]]||0);
     $('k-done').textContent=tt>0?Math.round(dn/tt*100)+'%':'–'; $('k-done-n').textContent=dn+(tt>0?' of '+tt:' · no target');
   }
   $('t-target').addEventListener('input',function(){ $('tg-dirty').hidden=false; $('tg-saved').hidden=true; });
-  $('tg-save').addEventListener('click',function(){ var T=targets();
+  $('tg-save').addEventListener('click',function(){ var T=targets(); setTimeout(function(){ if(DATA) drawMap(); },0);
     [].forEach.call(document.querySelectorAll('#t-target input'),function(i){ var v=parseInt(i.value,10); if(v>0) T[i.getAttribute('data-k')]=v; else delete T[i.getAttribute('data-k')]; });
     try{ localStorage.setItem('rs-targets',JSON.stringify(T)); }catch(e){}
     drawTargets(); $('tg-saved').hidden=false; });
@@ -1025,7 +1054,7 @@ window.startDashboard=function(){
     var chn=d.channels, idx=chn.map(function(c,i){return i;}), ci=cidx(), EI=eidx(), total=0;
     var amt=DATA.channel_amounts.map(function(rows){ var a=rows.filter(function(r){return (ci<0||r[2]===ci)&&(EI===-1||r[4]===EI)&&(gidx()<0||r[5]===gidx());}).map(function(r){return toShow(r[0],r[1]);}); var s=a.reduce(function(p,c){return p+c;},0); total+=s; return {a:a,s:s}; });
     formBars('c-chan',idx,chn.map(function(c,i){return mode3D?(CH3[i]||c.label):wrapLabel(c.label,16);}),function(i){return chn[i];},{stack:true,interval:0,barMax:34,g3:{boxWidth:240,boxDepth:40,alpha:20,beta:14,distance:170,interval:0}});
-    $('th-med').textContent='Median amount ('+state.cur+')'; $('th-avg').textContent='Average amount ('+state.cur+')'; $('th-tot').textContent='Total amount ('+state.cur+')';
+    $('th-med').textContent='Median amount per user ('+state.cur+')'; $('th-avg').textContent='Average amount per user ('+state.cur+')'; $('th-tot').textContent='Total amount ('+state.cur+')';
     $('t-chan').tBodies[0].innerHTML=chn.map(function(c,i){ var p=c.base?c.used/c.base*100:null, a=amt[i]||{a:[],s:0}, ok=a.a.length>=DATA.min_n;
       return '<tr><td>'+esc(c.label)+'</td><td class="num">'+pc(p)+'</td><td class="num">'+c.used+'</td><td class="num">'+(c.times===null?'–':c.times)+'</td><td class="num">'+(ok?money(mean(a.a)):'–')+'</td><td class="num">'+(ok?money(median(a.a)):'–')+'</td><td class="num">'+(ok?money(a.s):'–')+'</td><td class="num">'+((ok||a.s===0)&&total?pc(a.s/total*100):'–')+'</td></tr>'; }).join('')
       +(function(){ var all=[]; amt.forEach(function(x){ all=all.concat(x.a); }); var ok=all.length>=DATA.min_n, base=chn.length?chn[0].base:0;
@@ -1197,6 +1226,30 @@ window.startDashboard=function(){
       return '<div class="casechips">'+chips.filter(function(c){return c[1];}).map(function(c){ return '<span><i>'+c[0]+'</i> '+esc(c[1])+'</span>'; }).join('')+'</div><table>'+rows+'</table>'; }).join('');
     var dg=$('case'); if(dg.showModal){ if(!dg.open) dg.showModal(); } else dg.setAttribute('open',''); $('case-body').scrollTop=0;
   }
+  /* every case in the selected country (and the other filters), each one opens in full */
+  function caseMeta(){ var K=DATA.cases, IX={}; K.ids.forEach(function(k,i){ IX[k]=i; });
+    var g=function(r,k){ var v=IX[k]===undefined?-1:r[IX[k]+1]; return v<0?'':K.strs[v]; }, out=[];
+    Object.keys(K.rows).forEach(function(id){ K.rows[id].forEach(function(r){ out.push({id:id,form:r[0],date:g(r,'INT_DATE'),who:g(r,'INTNAME'),country:g(r,'DES_COUNTRY_NAME'),city:g(r,'CITY'),sex:g(r,'A1'),age:g(r,'A2'),job:g(r,'B5')}); }); });
+    return out; }
+  function showList(){
+    var sel=selName(), ei=eidx(), en=ei>=0?DATA.enumerators[ei][1]:null, sx=state.sex==='m'?'Male':state.sex==='f'?'Female':null, q=($('clist-q').value||'').toLowerCase();
+    var rows=caseMeta().filter(function(c){ return (!sel||c.country===sel)&&(!en||c.who===en)&&(!sx||c.sex===sx); });
+    rows.sort(function(a,b){ return a.date===b.date?(a.id<b.id?-1:1):(a.date<b.date?1:-1); });
+    var shown=rows.filter(function(c){ return !q||c.id.indexOf(q)>=0||c.who.toLowerCase().indexOf(q)>=0; });
+    var fd=function(d){ return /^\d{8}$/.test(d)?(+d.slice(6))+' '+M[+d.slice(4,6)-1]+' '+d.slice(0,4):d; }, OUT=DATA.cases.out||{};
+    $('clist-title').textContent=(sel||'All countries')+' · '+rows.length+' cases';
+    $('clist-body').innerHTML='<table><thead><tr><th>ID</th><th>Date</th><th>Interviewer</th><th>Form</th><th>Gender</th><th>Age</th><th>City</th><th>Occupation</th><th></th></tr></thead><tbody>'+
+      shown.map(function(c){ var f=DATA.forms[c.form], o=(OUT[c.id]||[]).length;
+        return '<tr class="cr" data-id="'+esc(c.id)+'" tabindex="0"><td class="id">'+esc(c.id)+'</td><td>'+esc(fd(c.date))+'</td><td>'+esc(c.who)+'</td><td>'+esc(f?f.label.replace(/ form$/,''):'')+'</td><td>'+esc(c.sex)+'</td><td>'+esc(c.age)+'</td><td>'+esc(c.city)+'</td><td>'+esc(c.job)+'</td><td>'+(o?'<span class="pill bad">'+o+' outlier'+(o>1?'s':'')+'</span>':'')+'</td></tr>'; }).join('')+
+      '</tbody></table>'+(shown.length?'':'<p class="muted" style="padding:14px 0">No cases.</p>');
+    var dg=$('clist'); if(dg.showModal){ if(!dg.open) dg.showModal(); } else dg.setAttribute('open','');
+  }
+  $('map-cases').addEventListener('click',showList);
+  $('clist-q').addEventListener('input',showList);
+  $('clist-body').addEventListener('click',function(e){ var tr=e.target.closest('tr.cr'); if(tr) showCase(tr.getAttribute('data-id')); });
+  $('clist-body').addEventListener('keydown',function(e){ var tr=e.target.closest('tr.cr'); if(tr&&e.key==='Enter') showCase(tr.getAttribute('data-id')); });
+  $('clist-x').addEventListener('click',function(){ var dg=$('clist'); if(dg.close) dg.close(); else dg.removeAttribute('open'); });
+  $('clist').addEventListener('click',function(e){ if(e.target===this&&this.close) this.close(); });
   $('s-olist').addEventListener('click',function(e){ if(e.target.closest('#s-omore')){ olAll=!olAll; drawStat(); return; } var b=e.target.closest('button[data-id]'); if(b) showCase(b.getAttribute('data-id')); });
   $('case-x').addEventListener('click',function(){ var dg=$('case'); if(dg.close) dg.close(); else dg.removeAttribute('open'); });
   $('case').addEventListener('click',function(e){ if(e.target===this&&this.close) this.close(); });
