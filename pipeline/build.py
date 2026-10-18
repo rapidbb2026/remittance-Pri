@@ -433,10 +433,11 @@ def number_rows(res, cfg, forms, day_of, country_of, n_countries, enum_of):
     return out
 
 
-def case_sheets(res, numbers, D, forms):
-    """Every answer of the interviews flagged as outliers, so the page can show one in full.
+def case_sheets(res, numbers, D, forms, cfg=None):
+    """Every answer of every interview in the results, so the page can show any one in full.
     Texts are stored once in a shared list; each interview is a list of positions in it (-1 = not answered)."""
-    wanted = {i for n in numbers.values() for i in n["ids"].values()}
+    wanted = {str(c["vals"].get("IDCODE")) for c in res}
+    ALIAS = {f: {clean_text(a).casefold(): b for a, b in m.items()} for f, m in ((cfg or {}).get("aliases") or {}).items()}
     items = [k for k in D if k != "IDCODE"]
     strs, pos = [], {}
 
@@ -451,6 +452,8 @@ def case_sheets(res, numbers, D, forms):
             return -1
         vals = {str(c).strip(): lab for c, lab in D[k].get("values") or []}
         s = str(x).strip()
+        if k in ALIAS and clean_text(s).casefold() in ALIAS[k]:
+            s = ALIAS[k][clean_text(s).casefold()]
         if vals:
             if s in vals:
                 return put(vals[s])
@@ -793,7 +796,7 @@ def main():
         "untranslated": len(UNTRANSLATED),
         "days": days, "currencies": CUR,
         "numbers": numbers,
-        "cases": case_sheets(res, numbers, D, forms),
+        "cases": case_sheets(res, numbers, D, forms, cfg),
         "answers": ans,
         "channel_amounts": channel_rows(res, forms, country_of, enum_of),
         "enumerators": [[str(code), name, team] for code, name, team in roster],
