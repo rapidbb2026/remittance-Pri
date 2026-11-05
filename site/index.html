@@ -378,12 +378,12 @@ footer{color:var(--faint);font-size:.8rem}
 
   <div class="grid2">
     <section class="card">
-      <h2>Average income by country</h2>
+      <h2>Income by country</h2>
       <div class="chart" id="c-inc-c" style="height:300px"></div>
       <div class="tbl"><table id="t-inc-c"><thead><tr><th>Country</th><th class="num">Gave income</th><th class="num">Average income</th><th class="num">Median income</th></tr></thead><tbody></tbody></table></div>
     </section>
     <section class="card">
-      <h2 id="h-inc-j">Average income by profession</h2>
+      <h2 id="h-inc-j">Income by profession</h2>
       <div class="chart" id="c-inc-j" style="height:300px"></div>
       <div class="tbl"><table id="t-inc-j"><thead><tr><th>Profession</th><th class="num">Gave income</th><th class="num">Average income</th><th class="num">Median income</th></tr></thead><tbody></tbody></table></div>
     </section>
@@ -893,27 +893,35 @@ window.startDashboard=function(){
   function stat(a){ var ok=a.length>=DATA.min_n; return {n:a.length,avg:ok?mean(a):null,med:ok?median(a):null}; }
   /* one bar per row, values shown as money */
   var MONEYF=money;
+  /* average and median side by side: rows are [label, average, median] */
+  var MEDC='#C9D8D1';
   function moneyBars(id,rows,color,fmt){ var money=fmt||MONEYF;
-    var have=rows.filter(function(r){return r[1]!==null;});
-    $(id).style.height=(mode3D?300:Math.max(300,have.length*34+50))+'px';
+    var have=rows.filter(function(r){return r[1]!==null||r[2]!==null;}), two=rows.some(function(r){return r.length>2;});
+    $(id).style.height=(mode3D?320:Math.max(300,have.length*(two?46:34)+70))+'px';
     var ch=mk(id);
     if(!have.length){ none(ch,'Not enough answers yet'); return; }
+    var SER=two?[['Average',color,1],['Median',MEDC,2]]:[['Average',color,1]];
+    var val=function(v){ return v===null||v===undefined?null:+(+v).toFixed(2); };
     if(mode3D){ var xs=have.map(function(r){return wrapLabel(r[0].split(',')[0],14);});
-      ch.setOption({tooltip:Object.assign({formatter:function(p){ return esc(have[p.value[0]][0])+': <b>'+money(p.value[2])+'</b>'; }},TT),
+      ch.setOption({legend:two?{top:0,textStyle:{color:MUTED},data:SER.map(function(s){return s[0];})}:undefined,
+        tooltip:Object.assign({formatter:function(p){ var r=have[p.value[0]]; return '<b>'+esc(r[0])+'</b>'+SER.map(function(s){ return '<br>'+s[0]+': <b>'+money(r[s[2]])+'</b>'; }).join(''); }},TT),
         xAxis3D:Object.assign(axis3D(),{type:'category',data:xs,axisLabel:{color:MUTED,fontSize:11,interval:0}}),
-        yAxis3D:Object.assign(axis3D(),{type:'category',data:[''],axisLabel:{show:false}}),
+        yAxis3D:Object.assign(axis3D(),{type:'category',data:SER.map(function(s){return s[0];}),axisLabel:{color:MUTED,fontSize:11}}),
         zAxis3D:Object.assign(axis3D(),{type:'value',axisLabel:{color:MUTED,fontSize:11,formatter:function(v){return compact(v);}}}),
-        grid3D:{boxWidth:Math.min(240,Math.max(130,have.length*34)),boxDepth:24,boxHeight:80,environment:'none',light:light(),postEffect:{enable:false},
-          viewControl:{alpha:18,beta:14,distance:150,autoRotate:false,zoomSensitivity:0.6,minAlpha:5,maxAlpha:80},axisPointer:{show:false}},
-        series:[{type:'bar3D',shading:'lambert',bevelSize:0.35,bevelSmoothness:3,data:have.map(function(r,i){return {value:[i,0,+r[1].toFixed(2)],itemStyle:{color:color,opacity:1}};}),
-          label:{show:false},emphasis:{label:{show:true,formatter:function(p){return money(p.value[2]);},textStyle:{color:'#fff',fontSize:13,backgroundColor:'rgba(6,18,14,.85)',padding:[2,6],borderRadius:3}},itemStyle:{color:'#ffffff'}}}]});
+        grid3D:{boxWidth:Math.min(240,Math.max(130,have.length*34)),boxDepth:two?44:24,boxHeight:80,environment:'none',light:light(),postEffect:{enable:false},
+          viewControl:{alpha:18,beta:20,distance:165,autoRotate:false,zoomSensitivity:0.6,minAlpha:5,maxAlpha:80},axisPointer:{show:false}},
+        series:SER.map(function(s,j){ return {type:'bar3D',name:s[0],itemStyle:{color:s[1]},shading:'lambert',bevelSize:0.35,bevelSmoothness:3,
+          data:have.map(function(r,i){return {value:[i,j,val(r[s[2]])||0],itemStyle:{color:s[1],opacity:1}};}),
+          label:{show:false},emphasis:{label:{show:true,formatter:function(p){return money(p.value[2]);},textStyle:{color:'#fff',fontSize:13,backgroundColor:'rgba(6,18,14,.85)',padding:[2,6],borderRadius:3}},itemStyle:{color:'#ffffff'}}}; })});
       return; }
     var rev=have.slice().reverse();
-    ch.setOption({tooltip:Object.assign({trigger:'axis',axisPointer:{type:'shadow'},formatter:function(ps){ var r=rev[ps[0].dataIndex]; return '<b>'+esc(r[0])+'</b><br>'+money(r[1]); }},TT),grid:{left:8,right:84,top:8,bottom:8,containLabel:true},
+    ch.setOption({legend:two?{top:0,right:8,textStyle:{color:MUTED},itemWidth:14,itemHeight:10}:undefined,
+      tooltip:Object.assign({trigger:'axis',axisPointer:{type:'shadow'},formatter:function(ps){ var r=rev[ps[0].dataIndex]; return '<b>'+esc(r[0])+'</b>'+SER.map(function(s){ return '<br>'+s[0]+': '+money(r[s[2]]); }).join(''); }},TT),
+      grid:{left:8,right:84,top:two?30:8,bottom:8,containLabel:true},
       yAxis:axis2D({type:'category',data:rev.map(function(r){return wrapLabel(r[0],$(id).clientWidth<520?20:34);}),splitLine:{show:false},axisLabel:{color:INK,fontSize:12,lineHeight:15,interval:0}}),
       xAxis:axis2D({type:'value',axisLabel:{color:MUTED,formatter:function(v){return compact(v);}}}),
-      series:[{type:'bar',barMaxWidth:18,label:{show:true,position:'right',color:MUTED,formatter:function(p){return money(p.value);}},
-        data:rev.map(function(r){return {value:+r[1].toFixed(2),itemStyle:{color:color,borderRadius:[0,4,4,0]}};})}]});
+      series:SER.map(function(s){ return {name:s[0],type:'bar',barMaxWidth:16,barGap:'15%',label:{show:true,position:'right',color:MUTED,fontSize:11,formatter:function(p){return p.value===null?'':money(p.value);}},
+        itemStyle:{color:s[1],borderRadius:[0,4,4,0]},data:rev.map(function(r){return val(r[s[2]]);})}; })});
   }
   function compact(v){ var a=Math.abs(v); if(state.cur==='BDT'){ if(a>=1e7) return +(v/1e7).toFixed(1)+' Cr'; if(a>=1e5) return +(v/1e5).toFixed(1)+' L'; } else if(a>=1e6) return +(v/1e6).toFixed(1)+'M'; if(a>=1e3) return +(v/1e3).toFixed(1)+'K'; return +(+v).toFixed(a<10?2:0)+''; }
   function drawCompare(){
@@ -930,21 +938,21 @@ window.startDashboard=function(){
     var last=C.map(function(c,i){ var cur=null; Object.keys(rt[i]).forEach(function(k){ if(cur===null||rt[i][k].length>rt[i][cur].length) cur=k; });
       var a=cur===null?[]:rt[i][cur], code=cur===null?'':DATA.currencies[cur];
       return {name:c[1],s:stat(d6[i]),p:stat(ps[i]),r:stat(pr[i]),f:stat(fee[i]),code:code,rate:a.length>=DATA.min_n?mean(a):null,used:code?R.BDT/R[code]:null}; });
-    moneyBars('c-last',last.map(function(x){return [x.name,x.s.avg];}),BEN);
+    moneyBars('c-last',last.map(function(x){return [x.name,x.s.avg,x.s.med];}),BEN);
     $('th-last-a').textContent='Average sent ('+state.cur+')'; $('th-last-m').textContent='Median sent ('+state.cur+')'; $('th-last-s2').textContent='Average sent ('+state.cur+')'; $('th-last-r').textContent='Average received ('+state.cur+')';
     var cty=function(x){ return '<td><span class="flag '+((FL[x.name]||{}).css||'')+'" style="vertical-align:-3px;margin-right:8px"></span>'+esc(x.name)+'</td>'; };
     $('t-last').tBodies[0].innerHTML=last.map(function(x,i){ return '<tr'+onRow(i)+'>'+cty(x)+'<td class="num">'+x.s.n+'</td><td class="num">'+money(x.s.avg)+'</td><td class="num">'+money(x.s.med)+'</td><td class="num">'+pc(x.f.avg)+'</td></tr>'; }).join('');
     $('t-last2').tBodies[0].innerHTML=last.map(function(x,i){ return '<tr'+onRow(i)+'>'+cty(x)+'<td class="num">'+x.r.n+'</td><td class="num">'+money(x.p.avg)+'</td><td class="num">'+money(x.r.avg)+'</td><td class="num">'+(x.p.avg&&x.r.avg!==null?(Math.abs(x.r.avg/x.p.avg-1)<.0005?'0%':(x.r.avg>x.p.avg?'+':'')+pc((x.r.avg/x.p.avg-1)*100)):'–')+'</td><td class="num">'+(x.rate===null?'–':num(x.rate,2)+' <small style="color:var(--muted)">BDT/'+x.code+'</small>')+'</td><td class="num">'+(x.used===null?'–':num(x.used,2))+'</td></tr>'; }).join('');
     /* income by country */
     var inc=by('B9').map(function(a,i){ return {name:C[i][1],s:stat(a)}; });
-    moneyBars('c-inc-c',inc.map(function(x){return [x.name,x.s.avg];}),NON);
+    moneyBars('c-inc-c',inc.map(function(x){return [x.name,x.s.avg,x.s.med];}),NON);
     $('t-inc-c').tBodies[0].innerHTML=inc.map(function(x,i){ return '<tr'+onRow(i)+'><td><span class="flag '+((FL[x.name]||{}).css||'')+'" style="vertical-align:-3px;margin-right:8px"></span>'+esc(x.name)+'</td><td class="num">'+x.s.n+'</td><td class="num">'+money(x.s.avg)+'</td><td class="num">'+money(x.s.med)+'</td></tr>'; }).join('');
     /* income by profession (follows the country filter) */
     var jobs=DATA.jobs.map(function(){return [];});
     DATA.income_by_job.forEach(function(r){ if(sel>=0&&r[2]!==sel) return; if(ei!==-1&&r[4]!==ei) return; if(gi>=0&&r[5]!==gi) return; jobs[r[3]].push(toShow(r[0],r[1])); });
     var jr=DATA.jobs.map(function(l,i){ return {name:l.replace(/\s*\(.*$/,''),s:stat(jobs[i])}; }).filter(function(x){return x.s.n;}).sort(function(a,b){ return (b.s.avg===null?-1:b.s.avg)-(a.s.avg===null?-1:a.s.avg); });
-    $('h-inc-j').textContent='Average income by profession'+(sel>=0?' · '+C[sel][1]:'');
-    moneyBars('c-inc-j',jr.map(function(x){return [x.name,x.s.avg];}),BEN);
+    $('h-inc-j').textContent='Income by profession'+(sel>=0?' · '+C[sel][1]:'');
+    moneyBars('c-inc-j',jr.map(function(x){return [x.name,x.s.avg,x.s.med];}),BEN);
     $('t-inc-j').tBodies[0].innerHTML=jr.map(function(x){ return '<tr><td>'+esc(x.name)+'</td><td class="num">'+x.s.n+'</td><td class="num">'+money(x.s.avg)+'</td><td class="num">'+money(x.s.med)+'</td></tr>'; }).join('')||'<tr><td colspan="4" class="empty">No answers yet.</td></tr>';
     /* hundi */
     var hr=DATA.channel_amounts[5]||[], hb=C.map(function(){return {base:0,used:0};});
@@ -952,7 +960,7 @@ window.startDashboard=function(){
     var hun=C.map(function(c,i){ var rows=hr.filter(function(r){return r[2]===i&&(ei===-1||r[4]===ei)&&(gi<0||r[5]===gi);}), ch=hb[i];
       var t=rows.map(function(r){return r[3];}).filter(function(x){return x!==null&&x!==undefined;});
       return {name:c[1],base:ch.base,used:ch.used,s:stat(rows.map(function(r){return toShow(r[0],r[1]);})),t:t.length>=DATA.min_n?mean(t):null}; });
-    moneyBars('c-hundi',hun.map(function(x){return [x.name,x.s.avg];}),'#FF8A6B');
+    moneyBars('c-hundi',hun.map(function(x){return [x.name,x.s.avg,x.s.med];}),'#FF8A6B');
     $('t-hundi').tBodies[0].innerHTML=hun.map(function(x,i){ return '<tr'+onRow(i)+'><td><span class="flag '+((FL[x.name]||{}).css||'')+'" style="vertical-align:-3px;margin-right:8px"></span>'+esc(x.name)+'</td><td class="num">'+x.base+'</td><td class="num">'+x.used+'</td><td class="num">'+pc(x.base?x.used/x.base*100:null)+'</td><td class="num">'+money(x.s.avg)+'</td><td class="num">'+money(x.s.med)+'</td><td class="num">'+(x.t===null?'–':num(x.t,1))+'</td></tr>'; }).join('');
   }
 
@@ -970,7 +978,7 @@ window.startDashboard=function(){
       return '<tr'+(cls?' style="background:rgba(233,185,73,.08);font-weight:700"':'')+'><td>'+esc(name)+'</td><td class="num">'+a.length+'</td><td class="num">'+f(ok?mean(a):null)+'</td><td class="num">'+f(ok?median(a):null)+'</td><td class="num">'+f(ok?modeOf(a):null)+'</td></tr>'; };
     $('h-rate').textContent='Exchange rate received, by channel · BDT per 1 '+code;
     $('t-rch').tBodies[0].innerHTML=line('All channels',all,1)+CH.map(function(l,i){ return per[i].length?line(l,per[i]):''; }).join('');
-    moneyBars('c-rate',[['All channels',all.length>=DATA.min_n?mean(all):null]].concat(CH.map(function(l,i){ return [l,per[i].length>=DATA.min_n?mean(per[i]):null]; })),NON,function(v){ return v===null||v===undefined?'–':Number(v).toLocaleString('en-US',{maximumFractionDigits:2}); });
+    moneyBars('c-rate',[['All channels',all.length>=DATA.min_n?mean(all):null,all.length>=DATA.min_n?median(all):null]].concat(CH.map(function(l,i){ var ok=per[i].length>=DATA.min_n; return [l,ok?mean(per[i]):null,ok?median(per[i]):null]; })),NON,function(v){ return v===null||v===undefined?'–':Number(v).toLocaleString('en-US',{maximumFractionDigits:2}); });
   }
 
   /* remittances at a glance, one row per country (click a row to look at that country) */
