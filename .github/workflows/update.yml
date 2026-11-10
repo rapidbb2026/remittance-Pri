@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: "*/15 * * * *"   # every 15 minutes (GitHub may run it a few minutes late)
   workflow_dispatch:
+    inputs:
+      allow_drop:
+        description: "Publish even if there are fewer interviews than the live site shows"
+        type: boolean
+        default: false
   push:
     branches: [main]
     paths: ["site/**", "pipeline/**", "config/**", "dict/**", ".github/workflows/update.yml"]
@@ -36,14 +41,33 @@ jobs:
           DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
         run: python pipeline/fetch_dropbox.py
 
+      - id: pages
+        uses: actions/configure-pages@v5
+
+      - name: Read what the live site shows now
+        run: curl -fsSL "${{ steps.pages.outputs.base_url }}/status.json" -o previous-status.json || echo "no live site yet"
+
       - name: Merge both questionnaires and build the summary file
-        run: python pipeline/build.py
+        env:
+          ALLOW_DROP: ${{ github.event.inputs.allow_drop == 'true' && '1' || '0' }}
+        run: python pipeline/build.py --previous previous-status.json
+
+      - name: Daily backup to Dropbox (CSV, Stata .dta and the CSPro .csdb files)
+        if: always()
+        continue-on-error: true
+        env:
+          DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
+          DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
+          DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
+        run: |
+          if python pipeline/backup.py --check; then echo "Today's backup is already in Dropbox"; exit 0; fi
+          pip install --quiet pandas
+          python pipeline/backup.py --upload
 
       - name: Remove the raw data (only site/data.json is published)
         if: always()
-        run: rm -rf data
+        run: rm -rf data backup
 
-      - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site
