@@ -14,7 +14,7 @@ on:
     paths: ["site/**", "pipeline/**", "config/**", "dict/**", ".github/workflows/update.yml"]
 
 permissions:
-  contents: read
+  contents: write   # to keep the latest backup as a release file
   pages: write
   id-token: write
 
@@ -52,21 +52,35 @@ jobs:
           ALLOW_DROP: ${{ github.event.inputs.allow_drop == 'true' && '1' || '0' }}
         run: python pipeline/build.py --previous previous-status.json
 
-      - name: Daily backup to Dropbox (CSV, Stata .dta and the CSPro .csdb files)
-        if: always()
+      - name: Locked backup for the site's Download button (CSV, Stata .dta and the CSPro .csdb files)
+        id: backup
         continue-on-error: true
         env:
-          DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
-          DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
-          DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
+          BACKUP_PASSWORD: ${{ secrets.BACKUP_PASSWORD }}
         run: |
-          if python pipeline/backup.py --check; then echo "Today's backup is already in Dropbox"; exit 0; fi
-          pip install --quiet pandas
-          python pipeline/backup.py --upload
+          pip install --quiet pandas cryptography
+          python pipeline/backup.py --out backup --encrypt site/backup.bin
+
+      - name: Keep today's locked backup in GitHub (release "latest-backup", previous one removed)
+        if: steps.backup.outcome == 'success' && hashFiles('site/backup.bin') != ''
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TODAY=$(TZ=Asia/Dhaka date +%F)
+          NAME="remittance_backup_${TODAY}.bin"
+          gh release view latest-backup >/dev/null 2>&1 || gh release create latest-backup --title "Latest data backup" \
+            --notes "Locked with the BACKUP_PASSWORD secret. Download it from the dashboard's Download backup button, or download the .bin here and unlock it there. Only the latest day is kept." --latest=false
+          OLD=$(gh release view latest-backup --json assets -q '.assets[].name')
+          if echo "$OLD" | grep -qx "$NAME"; then echo "Today's backup is already in the release"; exit 0; fi
+          cp site/backup.bin "$NAME"
+          gh release upload latest-backup "$NAME" --clobber
+          for a in $OLD; do [ "$a" != "$NAME" ] && gh release delete-asset latest-backup "$a" -y || true; done
+          echo "Saved $NAME in the release latest-backup"
 
       - name: Remove the raw data (only site/data.json is published)
         if: always()
-        run: rm -rf data backup
+        run: rm -rf data backup backup-repo
 
       - uses: actions/upload-pages-artifact@v3
         with:
