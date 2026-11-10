@@ -15,9 +15,10 @@
     }
   ],
   "fetch": {
-    "mode": "sync",
+    "mode": "both",
     "dropbox_sync_root": "/CSPro/DataSync",
-    "dropbox_csdb_folder": "/RemittanceSurveyData"
+    "dropbox_csdb_folder": "/CSPro/DataSync",
+    "note": "both = the .csdb files (made by running the DownloadData .pff files on a PC) + CSPro's sync files. If the .csdb files are not in dropbox_csdb_folder, the whole Dropbox is searched by file name."
   },
   "labels_dictionary": "dict/REMITTANCE_SURVEY_ENGLISH_DICT.dcf",
   "rates_note": "STARTING VALUES ONLY - replace with the rates you want to report (for example the Bangladesh Bank average for the fieldwork period).",
@@ -91,7 +92,11 @@
       "কেটারিং": "Kettering",
       "ওরস্টার": "Worcester",
       "macca": "Makkah",
-      "sandiego": "San Diego"
+      "sandiego": "San Diego",
+      "কুয়ালালামপুর": "Kuala Lumpur",
+      "দাম্মাম": "Dammam",
+      "মক্কা": "Makkah",
+      "মদিনা": "Madinah"
     },
     "D5_NAME": {
       "টেলিমানি": "Tele Money",
@@ -111,7 +116,15 @@
       "এহেছান ব্রাদার্স": "Ehsan Brothers",
       "রেমিটলি": "Remitly",
       "সোনালী ব্যাংক": "Sonali Bank",
-      "শাপলা মানি ট্রান্সফার": "Shapla Money Transfer"
+      "শাপলা মানি ট্রান্সফার": "Shapla Money Transfer",
+      "অনটাইম মানি ট্রান্সফার": "OnTime Money Transfer",
+      "টেপটেপ": "Taptap Send",
+      "বিএ এক্সচেঞ্জ": "BA Exchange",
+      "রূপসী ট্রাভেলস": "Rupshi Travels",
+      "রূপসী মানি ট্রান্সফার": "Rupshi Money Transfer",
+      "শাহজালাল ট্রাভেলস": "Shahjalal Travels",
+      "সোনালী পে": "Sonali Pay",
+      "হক ট্রাভেলস": "Haque Travels"
     }
   },
   "teams": [
@@ -322,5 +335,10 @@
   "extra_currencies": {
     "6": "Qatari Riyal (QAR)",
     "7": "Bahraini Dinar (BHD)"
+  },
+  "max_drop_share": 0.05,
+  "backup": {
+    "dropbox_folder": "/PRI_Backups",
+    "note": "Once a day the full data (all cases, CSV + Stata + the CSPro .csdb files) is saved here as remittance_backup_YYYY-MM-DD.zip. Old backups are never deleted."
   }
 }
