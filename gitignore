@@ -1,0 +1,8 @@
+# raw survey data must never be committed
+data/
+*.csdb
+*.csdbe
+*.dat
+site/data.json
+__pycache__/
+backup/
