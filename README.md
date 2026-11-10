@@ -98,6 +98,27 @@ cd site
 python -m http.server 8000        (then open http://localhost:8000)
 ```
 
+## Backup
+
+Every update makes a full backup zip and locks it with your **backup password** (AES-256). It holds:
+
+- the two CSPro `.csdb` files as downloaded, plus every CSPro sync file (zipped) — open the `.csdb` in CSPro;
+- `bn_all_cases`, `en_all_cases` and `combined_all_cases` as **CSV** and **Stata .dta**: every case, including
+  partial, refused and deleted ones (columns `deleted` and `partial`), with the original answer codes;
+  the .dta files carry question texts as variable labels and answer options as value labels;
+- both dictionaries (`.dcf`).
+
+Where to get it:
+- **On the site:** the *Download backup* button (top right). Type the backup password; the file is unlocked
+  in your browser and saved as a normal zip.
+- **On GitHub:** the release *latest-backup* (repository page → Releases) holds today's locked file only;
+  the previous day's file is removed. Unlock it with the button on the site (*Open a file instead*).
+
+Set-up, once: repository → Settings → Secrets and variables → Actions → New repository secret,
+name `BACKUP_PASSWORD`, value a long password only you know (at least 12 characters). Without it no backup
+is made and the dashboard updates as usual. If you forget the password, change the secret: the next update
+locks a new backup with the new password.
+
 ## Settings you will want to change
 
 | Setting | Meaning |

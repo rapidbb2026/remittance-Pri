@@ -212,6 +212,15 @@ td.num{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:now
 .outl button.x{background:rgba(255,138,122,.3);color:#FFD9D2}
 #case{width:min(860px,calc(100vw - 24px));max-height:88vh;padding:0;border:1px solid var(--line2);border-radius:16px;background:var(--bg2);color:var(--ink);overflow:hidden}
 #case[open],#clist[open]{display:flex;flex-direction:column}
+#bk{width:min(520px,calc(100vw - 24px));padding:0;border:1px solid var(--line2);border-radius:16px;background:var(--bg2);color:var(--ink)}
+#bk::backdrop{background:rgba(2,10,7,.72);backdrop-filter:blur(3px)}
+.bkbody{padding:16px 18px 20px;display:flex;flex-direction:column;gap:10px}
+.bkbody p{margin:0;line-height:1.5}
+#bk-pw{background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font:inherit}
+#bk-pw:focus{border-color:var(--gold);outline:none}
+.bkrow{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.bkfile{cursor:pointer;display:inline-flex;align-items:center}
+#bk-msg.bad{color:var(--bad)} #bk-msg.ok{color:var(--ok)}
 #clist{width:min(1000px,calc(100vw - 24px));max-height:88vh;padding:0;border:1px solid var(--line2);border-radius:16px;background:var(--bg2);color:var(--ink);overflow:hidden}
 #clist::backdrop{background:rgba(2,10,7,.72);backdrop-filter:blur(3px)}
 #clist-body{overflow:auto;padding:0 18px 18px}
@@ -277,6 +286,7 @@ footer{color:var(--faint);font-size:.8rem}
     <div class="tools">
       <div class="stamp">Checked <b id="checked">–</b><br>New data <b id="updated">–</b></div>
       <div class="seg" role="group" aria-label="Chart style"><button type="button" id="b3d" aria-pressed="true">3D</button><button type="button" id="b2d" aria-pressed="false">2D</button></div>
+      <button class="out" id="bk-open" type="button">Download backup</button>
       <button class="out" id="logout" type="button">Sign out</button>
     </div>
   </header>
@@ -485,6 +495,14 @@ footer{color:var(--faint);font-size:.8rem}
   </section>
 
   <footer id="foot"></footer>
+  <dialog id="bk" aria-labelledby="bk-title"><div class="casehd"><h2 id="bk-title" style="margin:0">Download backup</h2><button type="button" class="out" id="bk-x">Close</button></div>
+    <div class="bkbody">
+      <p id="bk-info" class="muted"></p>
+      <label for="bk-pw" class="lab">Backup password</label>
+      <input id="bk-pw" type="password" autocomplete="off">
+      <div class="bkrow"><button type="button" class="save" id="bk-go">Download</button><label class="out bkfile" for="bk-file">Open a file instead</label><input id="bk-file" type="file" accept=".bin" hidden></div>
+      <p id="bk-msg" role="status"></p>
+    </div></dialog>
   <dialog id="clist" aria-labelledby="clist-title"><div class="casehd"><h2 id="clist-title" style="margin:0"></h2><span style="display:flex;gap:8px;align-items:center"><input id="clist-q" type="search" placeholder="Find ID or interviewer" aria-label="Find a case"><button type="button" class="out" id="clist-x">Close</button></span></div><div id="clist-body"></div></dialog>
   <dialog id="case" aria-labelledby="case-title"><div class="casehd"><h2 id="case-title" style="margin:0"></h2><button type="button" class="out" id="case-x">Close</button></div><div id="case-body"></div></dialog>
 </div>
@@ -1258,6 +1276,42 @@ window.startDashboard=function(){
   $('clist-body').addEventListener('keydown',function(e){ var tr=e.target.closest('tr.cr'); if(tr&&e.key==='Enter') showCase(tr.getAttribute('data-id')); });
   $('clist-x').addEventListener('click',function(){ var dg=$('clist'); if(dg.close) dg.close(); else dg.removeAttribute('open'); });
   $('clist').addEventListener('click',function(e){ if(e.target===this&&this.close) this.close(); });
+  /* backup: the zip is locked with the BACKUP_PASSWORD secret and unlocked here, in the browser */
+  var BK=null;
+  function bkMsg(t,c){ var m=$('bk-msg'); m.textContent=t; m.className=c||''; }
+  function kb(n){ return n>1048576?(n/1048576).toFixed(1)+' MB':Math.round(n/1024)+' KB'; }
+  $('bk-open').addEventListener('click',function(){ bkMsg(''); $('bk-pw').value='';
+    var dg=$('bk'); if(dg.showModal) dg.showModal(); else dg.setAttribute('open','');
+    $('bk-info').textContent='Checking for a backup…';
+    fetch('backup.json',{cache:'no-store'}).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(j){ BK=j;
+      $('bk-info').textContent='Latest backup: '+j.made+' (Dhaka) · '+kb(j.bytes)+'. '+(j.summary||'').split(String.fromCharCode(10)).join(' · ');
+      $('bk-pw').focus(); })
+    .catch(function(){ BK=null; $('bk-info').textContent='No backup on the site yet. It appears after the BACKUP_PASSWORD secret is set and the next update runs. You can still open a backup file from GitHub.'; });
+  });
+  $('bk-x').addEventListener('click',function(){ var dg=$('bk'); if(dg.close) dg.close(); else dg.removeAttribute('open'); });
+  async function bkUnlock(buf,pw){
+    var u=new Uint8Array(buf), magic=String.fromCharCode.apply(null,u.slice(0,5));
+    if(magic!=='PRIB1') throw new Error('This is not a dashboard backup file.');
+    var salt=u.slice(5,21), iv=u.slice(21,33), it=new DataView(buf,33,4).getUint32(0), ct=u.slice(37);
+    var base=await crypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveKey']);
+    var key=await crypto.subtle.deriveKey({name:'PBKDF2',salt:salt,iterations:it,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['decrypt']);
+    try{ return await crypto.subtle.decrypt({name:'AES-GCM',iv:iv},key,ct); }catch(e){ throw new Error('Wrong password.'); }
+  }
+  function bkSave(plain,name){ var a=document.createElement('a'), url=URL.createObjectURL(new Blob([plain],{type:'application/zip'}));
+    a.href=url; a.download=name; document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(url); a.remove(); },4000); }
+  async function bkRun(getBuf,name){
+    var pw=$('bk-pw').value; if(!pw){ bkMsg('Type the backup password first.','bad'); $('bk-pw').focus(); return; }
+    if(!(window.crypto&&crypto.subtle)){ bkMsg('This browser cannot unlock files here. Open the site over https.','bad'); return; }
+    bkMsg('Unlocking…'); $('bk-go').disabled=true;
+    try{ var buf=await getBuf(); var plain=await bkUnlock(buf,pw); bkSave(plain,name()); bkMsg('Done. The zip is in your Downloads folder.','ok'); }
+    catch(e){ bkMsg(e&&e.message?e.message:'Could not download the backup.','bad'); }
+    finally{ $('bk-go').disabled=false; }
+  }
+  $('bk-go').addEventListener('click',function(){ if(!BK){ bkMsg('No backup on the site yet.','bad'); return; }
+    bkRun(function(){ return fetch('backup.bin',{cache:'no-store'}).then(function(r){ if(!r.ok) throw new Error('Could not fetch the backup.'); return r.arrayBuffer(); }); },function(){ return BK.file; }); });
+  $('bk-pw').addEventListener('keydown',function(e){ if(e.key==='Enter') $('bk-go').click(); });
+  $('bk-file').addEventListener('change',function(){ var f=this.files[0]; if(!f) return; this.value='';
+    bkRun(function(){ return f.arrayBuffer(); },function(){ return f.name.replace(/\.bin$/i,'')+'.zip'; }); });
   $('s-olist').addEventListener('click',function(e){ if(e.target.closest('#s-omore')){ olAll=!olAll; drawStat(); return; } var b=e.target.closest('button[data-id]'); if(b) showCase(b.getAttribute('data-id')); });
   $('case-x').addEventListener('click',function(){ var dg=$('case'); if(dg.close) dg.close(); else dg.removeAttribute('open'); });
   $('case').addEventListener('click',function(e){ if(e.target===this&&this.close) this.close(); });

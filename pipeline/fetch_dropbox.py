@@ -5,10 +5,11 @@ Needs three environment variables (stored as GitHub secrets):
   DROPBOX_APP_KEY, DROPBOX_APP_SECRET, DROPBOX_REFRESH_TOKEN
 
 settings.json -> fetch.mode chooses what is downloaded:
-  "sync"  the files CSPro's own Dropbox sync keeps under
-          /CSPro/DataSync/<DICTIONARY>/data/   (no PC needed)
-  "csdb"  the two .csdb files from fetch.dropbox_csdb_folder
-          (use this if a PC runs the DownloadData .pff files into a Dropbox folder)
+  "both"  (recommended) the .csdb files a PC makes with the DownloadData .pff files, plus the
+          sync files CSPro keeps under /CSPro/DataSync/<DICTIONARY>/data/. The two are combined, so
+          the dashboard has everything in the .csdb and anything uploaded since it was last downloaded.
+  "sync"  only the sync files
+  "csdb"  only the .csdb files
 """
 import base64
 import json
@@ -79,6 +80,26 @@ def download(token, path, dest):
     return len(blob)
 
 
+def find_csdb(token, folders, name):
+    """Look for the .csdb in the listed folders, then anywhere in the Dropbox by name."""
+    for folder in folders:
+        try:
+            for e in list_folder(token, folder):
+                if e["name"].lower() == name.lower():
+                    return e
+        except RuntimeError:
+            pass
+    try:
+        res = rpc(token, "/files/search_v2", {"query": name, "options": {"filename_only": True, "max_results": 20}})
+        hits = [m["metadata"]["metadata"] for m in res.get("matches", [])]
+        hits = [h for h in hits if h.get(".tag") == "file" and h["name"].lower() == name.lower()]
+        if hits:
+            return max(hits, key=lambda h: h["server_modified"])
+    except RuntimeError:
+        pass
+    return None
+
+
 def main():
     cfg = json.load(open(os.path.join(ROOT, "config", "settings.json"), encoding="utf-8"))
     fetch = cfg["fetch"]
@@ -86,13 +107,21 @@ def main():
     os.makedirs(data_dir, exist_ok=True)
     token = access_token()
 
+    mode = fetch.get("mode", "both")
+    folders = [f for f in [fetch.get("dropbox_csdb_folder"), fetch.get("dropbox_sync_root")] if f]
     for src in cfg["sources"]:
         sid = src["id"]
-        if fetch["mode"] == "csdb":
-            path = fetch["dropbox_csdb_folder"].rstrip("/") + "/" + src["csdb"]
-            size = download(token, path, os.path.join(data_dir, f"{sid}.csdb"))
-            print(f"[{sid}] downloaded {path} ({size / 1024:.0f} KB)")
-            continue
+        if mode in ("csdb", "both"):
+            e = find_csdb(token, folders, src["csdb"])
+            if e:
+                size = download(token, e["path_lower"], os.path.join(data_dir, f"{sid}.csdb"))
+                print(f"[{sid}] downloaded {e['path_display']} ({size / 1024:.0f} KB, last changed {e['server_modified']} UTC)")
+            elif mode == "csdb":
+                sys.exit(f"[{sid}] could not find {src['csdb']} in Dropbox")
+            else:
+                print(f"[{sid}] WARNING: {src['csdb']} not found in Dropbox; using the sync files only")
+            if mode == "csdb":
+                continue
 
         folder = f"{fetch['dropbox_sync_root'].rstrip('/')}/{src['dictionary']}/data"
         try:

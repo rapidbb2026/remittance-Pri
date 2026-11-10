@@ -14,6 +14,7 @@ import json
 import math
 import os
 import re
+import unicodedata
 import sys
 from collections import Counter, defaultdict
 
@@ -39,9 +40,12 @@ def load_source(src, data_dir, csdb_override):
         return read_csdb(csdb_override[sid])
     csdb = os.path.join(data_dir, f"{sid}.csdb")
     sync_dir = os.path.join(data_dir, sid, "sync")
+    base = []
     if os.path.exists(csdb):
-        log(f"[{sid}] reading {csdb}")
-        return read_csdb(csdb)
+        base = read_csdb(csdb)
+        log(f"[{sid}] read {csdb}: {len(base)} interviews")
+        if not os.path.isdir(sync_dir):
+            return base
     if os.path.isdir(sync_dir):
         log(f"[{sid}] reading CSPro sync files in {sync_dir}")
         manifest = {}
@@ -56,7 +60,16 @@ def load_source(src, data_dir, csdb_override):
         # manifest values are ISO strings, getmtime is a float: make them comparable
         files = [(n, m if isinstance(m, str) else dt.datetime.fromtimestamp(m, dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), b)
                  for n, m, b in files]
-        return read_sync_files(files, log)
+        recent = read_sync_files(files, log)
+        if not base:
+            return recent
+        # the .csdb holds everything up to the last download; the sync files hold the latest uploads.
+        # Same interview in both: the sync file version is used.
+        merged = {c["uuid"]: c for c in base}
+        new = sum(1 for c in recent if c["uuid"] not in merged)
+        merged.update({c["uuid"]: c for c in recent})
+        log(f"[{sid}] combined: {len(base)} from the .csdb + {new} only in sync files = {len(merged)} interviews")
+        return list(merged.values())
     raise SystemExit(f"No data found for source '{sid}'. Expected {csdb} or {sync_dir}/")
 
 
@@ -294,7 +307,8 @@ UNTRANSLATED = set()
 
 
 def clean_text(x):
-    return re.sub(r"\s+", " ", re.sub(r"[\u200b-\u200f\ufeff]", "", str(x))).strip()
+    # NFC so that two ways of typing the same Bangla letter (e.g. য় as one or two characters) count as one answer
+    return re.sub(r"\s+", " ", re.sub(r"[\u200b-\u200f\ufeff]", "", unicodedata.normalize("NFC", str(x)))).strip()
 
 
 def text_top(values, aliases, limit=15):
@@ -653,6 +667,7 @@ def main():
     ap.add_argument("--out", default=os.path.join(ROOT, "site", "data.json"))
     ap.add_argument("--settings", default=os.path.join(ROOT, "config", "settings.json"))
     ap.add_argument("--csdb", nargs="*", default=[], metavar="ID=PATH")
+    ap.add_argument("--previous", default="", help="status.json of the live site; stop if interviews drop sharply")
     args = ap.parse_args()
 
     cfg = json.load(open(args.settings, encoding="utf-8"))
@@ -814,10 +829,21 @@ def main():
         "views": views,
     }
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
+    # safety check: never replace the live site with much less data than it already shows
+    if args.previous and os.path.exists(args.previous):
+        try:
+            before = int(json.load(open(args.previous)).get("interviews") or 0)
+        except Exception:
+            before = 0
+        drop = cfg.get("max_drop_share", 0.05)
+        if before and len(cases) < before * (1 - drop) and os.environ.get("ALLOW_DROP") != "1":
+            raise SystemExit(f"STOPPED: this run found {len(cases)} interviews but the live site shows {before}. "
+                             "The site was left unchanged. Check Dropbox (files missing?) or run the workflow by hand "
+                             "with 'allow_drop' ticked if the drop is expected.")
     with open(args.out, "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, separators=(",", ":"))
     with open(os.path.join(os.path.dirname(args.out), "status.json"), "w") as f:
-        json.dump({"checked": now.strftime("%Y-%m-%d %H:%M")}, f)
+        json.dump({"checked": now.strftime("%Y-%m-%d %H:%M"), "interviews": len(cases)}, f)
     log(f"Wrote {args.out} ({os.path.getsize(args.out) / 1024:.0f} KB), {len(cases)} interviews, {len(views)} country views")
 
 

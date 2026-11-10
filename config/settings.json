@@ -338,7 +338,6 @@
   },
   "max_drop_share": 0.05,
   "backup": {
-    "dropbox_folder": "/PRI_Backups",
-    "note": "Once a day the full data (all cases, CSV + Stata + the CSPro .csdb files) is saved here as remittance_backup_YYYY-MM-DD.zip. Old backups are never deleted."
+    "note": "Every update makes a full backup (all cases as CSV + Stata, plus the CSPro .csdb and sync files), locked with the BACKUP_PASSWORD secret. Download it with the 'Download backup' button on the site. Once a day the same locked file replaces the previous one in the GitHub release 'latest-backup'."
   }
 }

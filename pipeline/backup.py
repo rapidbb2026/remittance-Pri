@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
-"""Daily backup of the full survey data, saved to your Dropbox.
+"""Backup of the full survey data, locked with your backup password.
 
-Once a day (Dhaka time) the workflow calls this after the dashboard is built. It writes one zip,
-  /PRI_Backups/remittance_backup_YYYY-MM-DD.zip
+Every run makes remittance_backup_YYYY-MM-DD.zip, encrypts it with the BACKUP_PASSWORD secret
+(AES-256-GCM, key from PBKDF2-SHA256) and puts it on the site as backup.bin, where the
+"Download backup" button unlocks it in your browser. Once a day the same locked file is also kept
+as the only asset of the GitHub release "latest-backup"; the previous day's file is removed.
+The zip is
 containing
   - <DICTIONARY>.csdb   the CSPro data files exactly as downloaded (open them in CSPro)
   - sync_files_<id>.zip every CSPro sync file found in Dropbox (the uploads made since the .csdb)
@@ -14,7 +17,7 @@ The CSV and Stata files hold ALL cases: complete, partial, refused and deleted
 Stata files carry the question texts as variable labels and the answer options as value labels.
 
   python pipeline/backup.py                 # write the backup into ./backup only
-  python pipeline/backup.py --upload        # ...and upload it to Dropbox (needs the 3 Dropbox secrets)
+  python pipeline/backup.py --encrypt site/backup.bin   # ...and lock it for the site (needs BACKUP_PASSWORD)
 """
 import argparse
 import datetime as dt
@@ -186,12 +189,30 @@ def already_done_today(folder):
         return False
 
 
+def encrypt(zpath, out_bin, password, summary):
+    """AES-256-GCM; the page derives the same key with PBKDF2 and unlocks it in the browser."""
+    from cryptography.hazmat.primitives import hashes
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+    from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+    salt, iv, iters = os.urandom(16), os.urandom(12), 310_000
+    key = PBKDF2HMAC(algorithm=hashes.SHA256(), length=32, salt=salt, iterations=iters).derive(password.encode("utf-8"))
+    blob = AESGCM(key).encrypt(iv, open(zpath, "rb").read(), None)
+    with open(out_bin, "wb") as f:              # PRIB1 | salt 16 | iv 12 | iterations (4 bytes) | data
+        f.write(b"PRIB1" + salt + iv + iters.to_bytes(4, "big") + blob)
+    info = {"file": os.path.basename(zpath), "made": dt.datetime.now(DHAKA).strftime("%Y-%m-%d %H:%M"),
+            "bytes": os.path.getsize(zpath), "summary": summary}
+    with open(os.path.join(os.path.dirname(out_bin) or ".", "backup.json"), "w") as f:
+        json.dump(info, f)
+    print(f"Locked copy written: {out_bin} ({os.path.getsize(out_bin) / 1024:.0f} KB)")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--data-dir", default=os.path.join(ROOT, "data"))
     ap.add_argument("--settings", default=os.path.join(ROOT, "config", "settings.json"))
     ap.add_argument("--out", default=os.path.join(ROOT, "backup"))
     ap.add_argument("--upload", action="store_true")
+    ap.add_argument("--encrypt", default="", metavar="OUT.bin", help="lock the zip with BACKUP_PASSWORD for the site")
     ap.add_argument("--check", action="store_true", help="only check whether today's backup exists")
     args = ap.parse_args()
     cfg = json.load(open(args.settings, encoding="utf-8"))
@@ -201,7 +222,12 @@ def main():
     if args.upload and already_done_today(folder):
         print("Today's backup is already in Dropbox; nothing to do.")
         return
+    if args.encrypt and not os.environ.get("BACKUP_PASSWORD"):
+        print("No BACKUP_PASSWORD secret yet, so no backup was made (README: Backup).")
+        return
     zpath = make_backup(cfg, args.data_dir, args.out)
+    if args.encrypt:
+        encrypt(zpath, args.encrypt, os.environ["BACKUP_PASSWORD"], open(os.path.join(zpath[:-4], "README.txt"), encoding="utf-8").read().split("\n\n")[1])
     if args.upload:
         upload(zpath, folder)
 
